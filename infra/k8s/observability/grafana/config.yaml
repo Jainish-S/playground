@@ -1,0 +1,46 @@
+# Grafana Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-config
+  namespace: observability
+data:
+  grafana.ini: |
+    [analytics]
+    check_for_updates = false
+
+    [server]
+    root_url = %(protocol)s://%(domain)s:%(http_port)s/
+
+    [security]
+    admin_user = admin
+    admin_password = ${GF_SECURITY_ADMIN_PASSWORD}
+
+    [users]
+    allow_sign_up = false
+
+    [auth.anonymous]
+    enabled = false
+
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        url: http://prometheus:9090
+        access: proxy
+        isDefault: true
+        editable: false
+
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards

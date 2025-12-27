@@ -1,0 +1,27 @@
+# Nginx Ingress Controller Helm Values
+# Optimized for OCI Free Tier with Twingate access
+
+controller:
+  service:
+    type: NodePort
+    nodePorts:
+      http: 30080
+      https: 30443
+
+  # Prometheus metrics
+  metrics:
+    enabled: true
+    port: 10254
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10254"
+
+  # Resource limits (conservative for free tier)
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

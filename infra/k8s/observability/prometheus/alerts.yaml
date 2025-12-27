@@ -1,0 +1,70 @@
+# Prometheus Alerting Rules
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: observability
+data:
+  alerts.yaml: |
+    groups:
+      - name: node-alerts
+        rules:
+          - alert: NodeDown
+            expr: up{job="kubernetes-nodes"} == 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node {{ $labels.instance }} is down"
+
+          - alert: NodeHighCPU
+            expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU on {{ $labels.instance }}"
+
+          - alert: NodeHighMemory
+            expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 85
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High memory on {{ $labels.instance }}"
+
+          - alert: NodeDiskFull
+            expr: (1 - node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 > 85
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Disk nearly full on {{ $labels.instance }}"
+
+      - name: pod-alerts
+        rules:
+          - alert: PodCrashLooping
+            expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} is crash looping"
+
+          - alert: PodNotReady
+            expr: kube_pod_status_ready{condition="true"} == 0
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} is not ready"
+
+      - name: pvc-alerts
+        rules:
+          - alert: PVCFull
+            expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PVC {{ $labels.persistentvolumeclaim }} is > 85% full"

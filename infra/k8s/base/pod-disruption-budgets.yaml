@@ -1,0 +1,50 @@
+# Pod Disruption Budgets - High Availability
+# Ensures minimum availability during voluntary disruptions
+
+# Prometheus PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prometheus-pdb
+  namespace: observability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: prometheus
+---
+# Grafana PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: grafana-pdb
+  namespace: observability
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: grafana
+---
+# Twingate Connector PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: twingate-pdb
+  namespace: twingate
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: twingate-connector
+---
+# Ingress Controller PDB
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ingress-nginx-pdb
+  namespace: ingress-nginx
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller

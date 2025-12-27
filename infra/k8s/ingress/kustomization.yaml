@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Ingress is installed via Helm - this tracks the values file
+# Install: helm install ingress-nginx ingress-nginx/ingress-nginx -f values.yaml -n ingress-nginx
+
+resources: []
+
+configMapGenerator:
+  - name: ingress-nginx-values
+    files:
+      - values.yaml

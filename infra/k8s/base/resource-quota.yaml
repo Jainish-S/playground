@@ -1,0 +1,24 @@
+# Resource Quotas for OCI Free Tier
+# Cluster: 4 OCPUs, 24GB RAM (minus ~20% system = 3.2 OCPUs, 19.2GB)
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cluster-quota
+  namespace: default
+spec:
+  hard:
+    # CPU (total across all pods)
+    requests.cpu: "3500m"
+    limits.cpu: "7000m"
+
+    # Memory (total across all pods)
+    requests.memory: "16Gi"
+    limits.memory: "18Gi"
+
+    # Storage
+    persistentvolumeclaims: "10"
+
+    # Object counts
+    pods: "50"
+    services: "20"
