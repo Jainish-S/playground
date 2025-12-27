@@ -1,0 +1,23 @@
+# Namespaces for the cluster
+# Note: default namespace is implicit
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    purpose: monitoring
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    purpose: ingress
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: twingate
+  labels:
+    purpose: network-access

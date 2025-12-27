@@ -1,0 +1,25 @@
+# =============================================================================
+# OCI Credentials - COPY THIS FILE TO terraform.tfvars AND FILL IN VALUES
+# =============================================================================
+
+# OCI Authentication (from OCI Console → User Settings → API Keys)
+tenancy_ocid     = "ocid1.tenancy.oc1..your-tenancy-id"
+user_ocid        = "ocid1.user.oc1..your-user-id"
+fingerprint      = "xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx"
+private_key_path = "/path/to/your/oci_api_key.pem"
+region           = "ap-mumbai-1"
+compartment_ocid = "ocid1.compartment.oc1..your-compartment-id"
+
+# SSH Access
+ssh_public_key = "ssh-rsa AAAAB3... your-ssh-public-key"
+
+# SECURITY: Restrict SSH to your IP only
+# Get your IP: curl ifconfig.me
+ssh_allowed_cidr = "YOUR.PUBLIC.IP/32"
+
+# =============================================================================
+# Twingate (Optional - set enable_twingate = true to use)
+# =============================================================================
+enable_twingate    = false
+twingate_api_token = ""  # From Twingate Console → Settings → API
+twingate_network   = ""  # Your network name (e.g., "mycompany" from mycompany.twingate.com)

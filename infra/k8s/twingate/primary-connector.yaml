@@ -1,0 +1,51 @@
+# Twingate Primary Connector Deployment
+# Uses tokens from OKE-Primary-Connector (Terraform output: twingate_primary_tokens)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: twingate-connector-primary
+  namespace: twingate
+  labels:
+    app: twingate-connector-primary
+    connector: primary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: twingate-connector-primary
+  template:
+    metadata:
+      labels:
+        app: twingate-connector-primary
+        connector: primary
+    spec:
+      containers:
+        - name: connector
+          image: docker.io/twingate/connector:latest
+          env:
+            - name: TWINGATE_NETWORK
+              valueFrom:
+                secretKeyRef:
+                  name: twingate-primary-tokens
+                  key: TWINGATE_NETWORK
+            - name: TWINGATE_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: twingate-primary-tokens
+                  key: TWINGATE_ACCESS_TOKEN
+            - name: TWINGATE_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: twingate-primary-tokens
+                  key: TWINGATE_REFRESH_TOKEN
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 150m
+              memory: 192Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 65532
