@@ -1,0 +1,16 @@
+$schema: 'https://moonrepo.dev/schemas/workspace.json'
+
+# Project discovery
+projects:
+  globs:
+    - 'apps/*'
+    - 'packages/*'
+
+# VCS configuration
+vcs:
+  manager: 'git'
+  defaultBranch: 'main'
+
+# Constraint configuration
+constraints:
+  enforceProjectTypeRelationships: false
