@@ -203,6 +203,57 @@ kubectl logs -n twingate -l connector=secondary --tail=2 # State: Online
 
 ---
 
+## Phase 6: Container Registry (OCI)
+
+OCI Container Registry is **free** with 500GB storage and unlimited pulls.
+
+### Step 6.1: Generate Auth Token
+
+1. OCI Console → Profile → User Settings → Auth Tokens
+2. Generate Token, name: `docker-registry`
+3. **Copy immediately** (shown only once)
+
+### Step 6.2: Docker Login
+
+```bash
+# Format: docker login <region>.ocir.io
+docker login bom.ocir.io
+# Username: <namespace>/oracleidentitycloudservice/<email>
+# Password: <auth-token>
+```
+
+### Step 6.3: Build & Push Images
+
+```bash
+# Standard workflow using the push script
+./scripts/oci-push-images.sh
+
+# With specific version tag
+./scripts/oci-push-images.sh v1.0.0
+```
+
+**Image Naming Convention:**
+```
+<region>.ocir.io/<namespace>/guardrail/<service>:<tag>
+
+Services:
+  - guardrail-server
+  - model-prompt-guard
+  - model-pii-detect
+  - model-hate-detect
+  - model-content-class
+
+Tags:
+  - latest (default)
+  - <git-sha> (auto-added)
+  - v1.0.0 (version, optional)
+```
+
+> [!NOTE]
+> OCI auto-creates public repositories on first push. No terraform needed.
+
+---
+
 ## Troubleshooting
 
 | Issue | Solution |

@@ -49,8 +49,6 @@ spec:
               mountPath: /var/lib/grafana/dashboards/k8s-nodes
             - name: dashboards-k8s-pods
               mountPath: /var/lib/grafana/dashboards/k8s-pods
-            - name: dashboards-nginx
-              mountPath: /var/lib/grafana/dashboards/nginx
           resources:
             requests:
               cpu: 50m
@@ -77,9 +75,6 @@ spec:
         - name: dashboards-k8s-pods
           configMap:
             name: grafana-dashboard-k8s-pods
-        - name: dashboards-nginx
-          configMap:
-            name: grafana-dashboard-nginx-ingress
 ---
 apiVersion: v1
 kind: Service
