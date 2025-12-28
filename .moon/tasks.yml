@@ -1,0 +1,11 @@
+$schema: 'https://moonrepo.dev/schemas/tasks.json'
+
+# Global task templates inherited by Python projects
+fileGroups:
+  sources:
+    - 'src/**/*.py'
+  tests:
+    - 'tests/**/*.py'
+  configs:
+    - 'pyproject.toml'
+    - 'moon.yml'

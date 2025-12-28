@@ -1,0 +1,51 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: 'python'
+type: 'application'
+
+tasks:
+  dev:
+    command: 'uv'
+    args:
+      - 'run'
+      - 'uvicorn'
+      - 'guardrail.main:app'
+      - '--reload'
+      - '--host'
+      - '0.0.0.0'
+      - '--port'
+      - '8000'
+    local: true
+
+  test:
+    command: 'uv'
+    args:
+      - 'run'
+      - 'pytest'
+      - 'tests/'
+      - '-v'
+      - '--cov=src'
+      - '--cov-report=term-missing'
+    inputs:
+      - 'src/**/*.py'
+      - 'tests/**/*.py'
+      - 'pyproject.toml'
+
+  build:
+    command: 'uv'
+    args: ['sync', '--frozen']
+
+  docker:
+    command: 'docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile'
+      - '-t'
+      - 'guardrail-server:latest'
+      - '../../'
+    inputs:
+      - 'src/**'
+      - 'Dockerfile'
+      - '../../pyproject.toml'
+      - '../../uv.lock'

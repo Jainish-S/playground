@@ -1,0 +1,131 @@
+# LLM Guardrails Platform - Docker Compose Local Development
+
+# This brings up the full stack for local testing:
+# - Guardrail Server (port 8000)
+# - 4 Model Services (ports 8001-8004)
+# - PostgreSQL (port 5432)
+# - Redis (port 6379)
+#
+# Usage:
+#   docker-compose up --build
+#   curl http://localhost:8000/v1/health
+
+version: '3.8'
+
+services:
+  # Main guardrail orchestration server
+  guardrail-server:
+    build:
+      context: .
+      dockerfile: apps/guardrail-server/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/guardrails
+      - MODEL_PROMPT_GUARD_URL=http://model-prompt-guard:8000
+      - MODEL_PII_DETECT_URL=http://model-pii-detect:8000
+      - MODEL_HATE_DETECT_URL=http://model-hate-detect:8000
+      - MODEL_CONTENT_CLASS_URL=http://model-content-class:8000
+      - MODEL_TIMEOUT_SECONDS=0.5
+      - CB_FAILURE_THRESHOLD=5
+      - CB_RECOVERY_TIMEOUT=30
+    depends_on:
+      - redis
+      - postgres
+      - model-prompt-guard
+      - model-pii-detect
+      - model-hate-detect
+      - model-content-class
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Prompt injection detection model
+  model-prompt-guard:
+    build:
+      context: .
+      dockerfile: apps/model-prompt-guard/Dockerfile
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PII detection model
+  model-pii-detect:
+    build:
+      context: .
+      dockerfile: apps/model-pii-detect/Dockerfile
+    ports:
+      - "8002:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Hate/toxic content detection model
+  model-hate-detect:
+    build:
+      context: .
+      dockerfile: apps/model-hate-detect/Dockerfile
+    ports:
+      - "8003:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Content classification model
+  model-content-class:
+    build:
+      context: .
+      dockerfile: apps/model-content-class/Dockerfile
+    ports:
+      - "8004:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=guardrails
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
