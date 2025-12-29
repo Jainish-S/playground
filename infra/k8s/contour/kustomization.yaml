@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Contour Ingress Controller Manifests
+# Note: Contour itself is installed via Helm, these are supporting resources
+
+resources:
+  - httpproxy-guardrail.yaml
+  - ratelimit/config.yaml
+  - ratelimit/deployment.yaml
+  - ratelimit/service.yaml
+
+# Create projectcontour namespace if not exists
+namespace: projectcontour

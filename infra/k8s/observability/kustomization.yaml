@@ -9,12 +9,7 @@ resources:
   - prometheus/alerts.yaml
   - grafana/config.yaml
   - grafana/deployment.yaml
-  - grafana/dashboards/grafana-dashboard-cadvisor.yaml
-  - grafana/dashboards/grafana-dashboard-k8s-global.yaml
-  - grafana/dashboards/grafana-dashboard-k8s-namespaces.yaml
-  - grafana/dashboards/grafana-dashboard-k8s-nodes.yaml
-  - grafana/dashboards/grafana-dashboard-k8s-pods.yaml
-  - grafana/dashboards/grafana-dashboard-nginx-ingress.yaml
+  - grafana/dashboards
   - exporters/node-exporter.yaml
   - exporters/kube-state-metrics.yaml
   # Note: metrics-server already exists in kube-system on OKE

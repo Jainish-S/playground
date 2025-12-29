@@ -110,7 +110,7 @@ curl -X POST http://localhost:8000/v1/validate \
 | model-hate-detect | 8000 | Hate speech detection |
 | model-content-class | 8000 | Content classification |
 | postgres | 5432 | Configuration storage |
-| redis | 6379 | Caching & rate limiting |
+| redis | 6379 | Caching (circuit breaker state) |
 
 ---
 

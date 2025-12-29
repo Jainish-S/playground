@@ -96,3 +96,70 @@ data:
       - job_name: 'kube-state-metrics'
         static_configs:
           - targets: ['kube-state-metrics:8080']
+
+      # Contour Controller (xDS metrics)
+      - job_name: 'contour'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [projectcontour]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: contour
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: metrics
+          # Preserve pod metadata for dashboards
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            action: replace
+            target_label: container
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            action: replace
+            target_label: node
+          # Add service label for Contour service
+          - target_label: service
+            replacement: contour
+          # Map all pod labels
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+
+      # Envoy Proxy (deep ingress metrics - P50/P95/P99 per route)
+      - job_name: 'envoy'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [projectcontour]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: envoy
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: metrics
+          # Preserve pod metadata for dashboards
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            action: replace
+            target_label: container
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            action: replace
+            target_label: node
+          # Add service label for Envoy metrics service
+          - target_label: service
+            replacement: contour-envoy-metrics
+          # Map all pod labels
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+        metrics_path: /stats/prometheus

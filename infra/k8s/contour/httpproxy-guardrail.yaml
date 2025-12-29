@@ -1,0 +1,86 @@
+# HTTPProxy for Guardrail API
+# This is the main edge gateway configuration
+#
+# Key features:
+# - TLS termination (auto via cert-manager)
+# - Global rate limiting (1000 req/min across all pods)
+# - Local rate limiting backup (100 req/sec per pod)
+# - WeightedLeastRequest load balancing
+# - Health checks at proxy layer
+# - Retries for 5xx errors
+
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: guardrail-api
+  namespace: guardrails-platform
+  annotations:
+    # TLS disabled for local testing
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  virtualhost:
+    fqdn: envoy.projectcontour
+    # Removed TLS for local testing - traffic will be HTTP
+    # Global rate limiting (synchronized across all Envoy pods)
+    rateLimitPolicy:
+      global:
+        descriptors:
+          - entries:
+              - genericKey:
+                  value: guardrail-api-global
+
+  routes:
+    # Main validation API
+    - conditions:
+        - prefix: /v1/
+      services:
+        - name: guardrail-server
+          port: 8000
+      timeoutPolicy:
+        response: 2s
+        idle: 30s
+        idleConnection: 60s
+      retryPolicy:
+        count: 2
+        perTryTimeout: 500ms
+        retryOn:
+          - 5xx
+          - reset
+          - connect-failure
+      healthCheckPolicy:
+        path: /v1/health
+        intervalSeconds: 5
+        timeoutSeconds: 2
+        unhealthyThresholdCount: 3
+        healthyThresholdCount: 2
+      loadBalancerPolicy:
+        strategy: WeightedLeastRequest
+      # Local rate limit as backup
+      rateLimitPolicy:
+        local:
+          requests: 100
+          unit: second
+          responseHeadersToAdd:
+            - name: X-RateLimit-Limit
+              value: "100"
+
+    # Metrics endpoint (internal access via Twingate)
+    - conditions:
+        - prefix: /metrics
+      services:
+        - name: guardrail-server
+          port: 8000
+
+    # Debug endpoints (internal access via Twingate)
+    - conditions:
+        - prefix: /debug/
+      services:
+        - name: guardrail-server
+          port: 8000
+
+    # Root and docs
+    - conditions:
+        - prefix: /
+      services:
+        - name: guardrail-server
+          port: 8000

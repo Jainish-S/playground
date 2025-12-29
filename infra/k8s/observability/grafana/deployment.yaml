@@ -49,6 +49,12 @@ spec:
               mountPath: /var/lib/grafana/dashboards/k8s-nodes
             - name: dashboards-k8s-pods
               mountPath: /var/lib/grafana/dashboards/k8s-pods
+            - name: dashboards-contour-ingress
+              mountPath: /var/lib/grafana/dashboards/contour-ingress
+            - name: dashboards-contour-global
+              mountPath: /var/lib/grafana/dashboards/contour-global
+            - name: dashboards-guardrails
+              mountPath: /var/lib/grafana/dashboards/guardrails
           resources:
             requests:
               cpu: 50m
@@ -75,6 +81,15 @@ spec:
         - name: dashboards-k8s-pods
           configMap:
             name: grafana-dashboard-k8s-pods
+        - name: dashboards-contour-ingress
+          configMap:
+            name: grafana-dashboard-contour-ingress
+        - name: dashboards-contour-global
+          configMap:
+            name: grafana-dashboard-contour-global
+        - name: dashboards-guardrails
+          configMap:
+            name: grafana-dashboard-guardrails
 ---
 apiVersion: v1
 kind: Service

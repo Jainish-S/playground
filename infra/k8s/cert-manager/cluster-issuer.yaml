@@ -1,4 +1,12 @@
-# ClusterIssuer for Let's Encrypt (staging + production)
+# ClusterIssuer for Let's Encrypt with Contour
+# Uses HTTP-01 challenge via Contour's projectcontour.io/ingress class
+#
+# Why Contour?
+# - Type-safe HTTPProxy CRDs (vs nginx annotations)
+# - Deep Prometheus metrics (P50/P95/P99 per route)
+# - Global rate limiting (free, vs Nginx Plus $$$)
+# - xDS hot reload (zero-downtime config updates)
+# See docs/CONTOUR_ARCHITECTURE.md for full details
 
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -13,7 +21,7 @@ spec:
     solvers:
       - http01:
           ingress:
-            class: nginx
+            class: contour  # Changed from nginx to contour
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -28,4 +36,4 @@ spec:
     solvers:
       - http01:
           ingress:
-            class: nginx
+            class: contour  # Changed from nginx to contour

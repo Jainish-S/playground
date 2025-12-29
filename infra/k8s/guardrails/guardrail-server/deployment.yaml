@@ -1,0 +1,70 @@
+# Guardrail Server - Main Orchestration Service
+# OCI Registry: bom.ocir.io/bm96q5bq36zw/guardrail/guardrail-server
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardrail-server
+  namespace: guardrails-platform
+  labels:
+    app: guardrail-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: guardrail-server
+  template:
+    metadata:
+      labels:
+        app: guardrail-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: server
+          image: bom.ocir.io/bm96q5bq36zw/guardrail/guardrail-server:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-config
+            - secretRef:
+                name: guardrail-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      imagePullSecrets:
+        - name: oci-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guardrail-server
+  namespace: guardrails-platform
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: guardrail-server
+  ports:
+    - port: 8000
+      targetPort: 8000

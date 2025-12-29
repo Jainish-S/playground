@@ -7,4 +7,6 @@ resources:
   - grafana-dashboard-k8s-namespaces.yaml
   - grafana-dashboard-k8s-nodes.yaml
   - grafana-dashboard-k8s-pods.yaml
-  - grafana-dashboard-nginx-ingress.yaml
+  - grafana-dashboard-contour-ingress.yaml
+  - grafana-dashboard-contour-global.yaml
+  - grafana-dashboard-guardrails.yaml

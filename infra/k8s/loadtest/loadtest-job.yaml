@@ -1,0 +1,57 @@
+# ConfigMap for customizable load test parameters
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loadtest-config
+  namespace: guardrails-platform
+data:
+  TARGET: "http://envoy.projectcontour"
+  DURATION: "120s"
+  RPS: "100"
+  WORKERS: "10"
+  TENANTS: "5"
+  # Send requests through Envoy ingress with proper Host header
+  HOST_HEADER: "guardrail.local"
+---
+# Load Test Job using ConfigMap
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guardrail-loadtest
+  namespace: guardrails-platform
+  labels:
+    app: loadtest
+    component: testing
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: loadtest
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: loadtest
+          image: bom.ocir.io/bm96q5bq36zw/guardrail/loadtest:latest
+          imagePullPolicy: Always
+          command: ["/loadtest"]
+          args:
+            - "--target=$(TARGET)"
+            - "--duration=$(DURATION)"
+            - "--rps=$(RPS)"
+            - "--workers=$(WORKERS)"
+            - "--tenants=$(TENANTS)"
+            - "--output=json"
+          envFrom:
+            - configMapRef:
+                name: loadtest-config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+      imagePullSecrets:
+        - name: oci-registry-secret
