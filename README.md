@@ -26,7 +26,7 @@ infra/
 │   └── environments/    # Environment configs
 └── k8s/                 # Kubernetes manifests
     ├── base/            # Resource quotas, namespaces
-    ├── ingress/         # NGINX ingress
+    ├── contour/         # Contour ingress (Envoy-based)
     ├── cert-manager/    # TLS certificates
     ├── twingate/        # Zero-trust access
     └── observability/   # Prometheus, Grafana, exporters

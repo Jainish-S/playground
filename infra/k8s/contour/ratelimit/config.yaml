@@ -1,0 +1,20 @@
+# Rate Limit Service (RLS) Configuration
+# Global rate limiting for api.guardrail.com
+#
+# This config is mounted into the RLS container at /data/ratelimit/config/config.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ratelimit-config
+  namespace: projectcontour
+data:
+  config.yaml: |
+    domain: contour
+    descriptors:
+      # Global rate limit for all API traffic
+      - key: generic_key
+        value: guardrail-api-global
+        rate_limit:
+          unit: minute
+          requests_per_unit: 1000

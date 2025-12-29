@@ -11,7 +11,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ingress-nginx
+  name: projectcontour
   labels:
     purpose: ingress
 ---

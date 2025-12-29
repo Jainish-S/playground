@@ -1,0 +1,8 @@
+# Guardrails Platform Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: guardrails-platform
+  labels:
+    app.kubernetes.io/name: guardrails-platform
+    app.kubernetes.io/component: infrastructure

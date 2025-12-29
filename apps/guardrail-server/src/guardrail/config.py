@@ -79,11 +79,8 @@ class Settings(BaseSettings):
         description="Successes needed to close circuit from half-open",
     )
 
-    # Rate limiting
-    DEFAULT_RATE_LIMIT_QPS: int = Field(
-        default=100,
-        description="Default rate limit per tenant (QPS)",
-    )
+    # Note: Rate limiting is handled by Contour/Envoy at the ingress layer
+    # See docs/CONTOUR_ARCHITECTURE.md for configuration
 
     @property
     def model_urls(self) -> dict[str, str]:

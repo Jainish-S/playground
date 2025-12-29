@@ -1,0 +1,19 @@
+# Guardrails Platform - ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guardrail-config
+  namespace: guardrails-platform
+data:
+  # Model service URLs (internal K8s DNS)
+  MODEL_PROMPT_GUARD_URL: "http://model-prompt-guard:8000"
+  MODEL_PII_DETECT_URL: "http://model-pii-detect:8000"
+  MODEL_HATE_DETECT_URL: "http://model-hate-detect:8000"
+  MODEL_CONTENT_CLASS_URL: "http://model-content-class:8000"
+  
+  # Timeouts and circuit breaker
+  MODEL_TIMEOUT_SECONDS: "0.08"
+  MODEL_CONNECT_TIMEOUT: "0.02"
+  CB_FAILURE_THRESHOLD: "5"
+  CB_RECOVERY_TIMEOUT: "30"
+  CB_SUCCESS_THRESHOLD: "3"

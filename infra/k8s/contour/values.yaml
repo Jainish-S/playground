@@ -1,0 +1,38 @@
+# Contour Helm Values
+# For OCI Free Tier with Twingate access
+# Install: helm install contour bitnami/contour -n projectcontour --create-namespace -f values.yaml
+
+contour:
+  # Enable leader election for HA
+  leaderElection:
+    enabled: true
+
+envoy:
+  service:
+    type: NodePort
+    nodePorts:
+      http: 30080
+      https: 30443
+
+  # Resource limits (conservative for free tier)
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Prometheus metrics
+  metrics:
+    enabled: true
+    port: 8002
+    serviceMonitor:
+      enabled: false  # Using manual scrape config
+
+# Rate limit service integration
+# See ratelimit/ directory for RLS deployment
+rateLimitService:
+  extensionService: projectcontour/ratelimit
+  domain: contour
+  failOpen: true  # Allow requests if RLS is unavailable
