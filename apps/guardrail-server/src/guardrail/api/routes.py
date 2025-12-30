@@ -4,12 +4,11 @@ Endpoints:
 - POST /v1/validate - Main validation endpoint
 - GET /v1/health - Liveness probe
 - GET /v1/ready - Readiness probe
-- GET /metrics - Prometheus metrics
+- GET /metrics - Prometheus metrics (provided by py_common.metrics middleware)
 - GET /debug/circuit-breakers - Circuit breaker status (debug)
 """
 
-from fastapi import APIRouter, Header, HTTPException, Response
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi import APIRouter, Header, HTTPException
 
 from py_common.schemas import ValidateRequest, ValidateResponse
 from guardrail.core.orchestrator import validate_text, AggregationStrategy
@@ -78,21 +77,35 @@ async def health():
 @router.get("/v1/ready")
 async def ready():
     """Readiness probe - can handle traffic?
-    
-    Checks that at least one model circuit breaker is closed.
+
+    Checks:
+    1. Server is not shutting down
+    2. At least one model circuit breaker is closed
+
+    Returns 503 during shutdown to remove pod from load balancer.
     """
+    # Import here to avoid circular dependency
+    from guardrail.main import _shutting_down
+
+    # Check if server is shutting down
+    if _shutting_down:
+        raise HTTPException(
+            status_code=503,
+            detail="Server shutting down, not accepting new requests",
+        )
+
     circuit_breakers = get_all_circuit_breakers()
-    
+
     # Check if at least one model is available
     available_models = []
     for name, cb in circuit_breakers.items():
         if cb.allow_request():
             available_models.append(name)
-    
+
     # If no circuit breakers exist yet, we're ready (they'll be created on first request)
     if not circuit_breakers:
         return {"status": "ready", "available_models": "all (not initialized)"}
-    
+
     if available_models:
         return {"status": "ready", "available_models": available_models}
     else:
@@ -100,12 +113,6 @@ async def ready():
             status_code=503,
             detail="No models available (all circuit breakers open)",
         )
-
-
-@router.get("/metrics")
-async def metrics():
-    """Prometheus metrics endpoint."""
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 # Debug endpoints (should be protected in production)
