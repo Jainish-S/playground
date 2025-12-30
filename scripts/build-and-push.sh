@@ -50,12 +50,15 @@ echo ""
 cd "$PROJECT_ROOT"
 
 # Build images
+# Format: "image-name:dockerfile:context"
+# If context is omitted, defaults to project root (.)
 IMAGES=(
-    "guardrail-server:apps/guardrail-server/Dockerfile"
-    "model-prompt-guard:apps/model-prompt-guard/Dockerfile"
-    "model-pii-detect:apps/model-pii-detect/Dockerfile"
-    "model-hate-detect:apps/model-hate-detect/Dockerfile"
-    "model-content-class:apps/model-content-class/Dockerfile"
+    "guardrail-server:apps/guardrail-server/Dockerfile:."
+    "model-prompt-guard:apps/model-prompt-guard/Dockerfile:."
+    "model-pii-detect:apps/model-pii-detect/Dockerfile:."
+    "model-hate-detect:apps/model-hate-detect/Dockerfile:."
+    "model-content-class:apps/model-content-class/Dockerfile:."
+    # "loadtest:tools/loadtest/Dockerfile:tools/loadtest"
 )
 
 echo "🔨 Building images..."
@@ -67,11 +70,15 @@ echo "📌 Git SHA: $GIT_SHA"
 echo ""
 
 for img_entry in "${IMAGES[@]}"; do
-    IFS=':' read -r img_name dockerfile <<< "$img_entry"
+    IFS=':' read -r img_name dockerfile context <<< "$img_entry"
+    # Default to project root if context not specified
+    context="${context:-.}"
     echo "Building $img_name..."
+    echo "  Context: $context"
+    echo "  Dockerfile: $dockerfile"
     # Use --provenance=false to avoid creating manifest lists with "unknown" tags
     # Also build with explicit platform to avoid multi-arch issues
-    docker build --provenance=false --no-cache -f "$dockerfile" -t "$img_name:latest" .
+    docker build --provenance=false --no-cache -f "$dockerfile" -t "$img_name:latest" "$context"
     docker tag "$img_name:latest" "${REGISTRY}/guardrail/${img_name}:latest"
     docker tag "$img_name:latest" "${REGISTRY}/guardrail/${img_name}:${GIT_SHA}"
     echo "  ✅ $img_name built and tagged (latest + ${GIT_SHA})"
