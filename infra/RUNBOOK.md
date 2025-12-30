@@ -207,34 +207,90 @@ kubectl logs -n twingate -l connector=secondary --tail=2 # State: Online
 
 OCI Container Registry is **free** with 500GB storage and unlimited pulls.
 
-### Step 6.1: Generate Auth Token
+### Registry Configuration
+
+**All repositories are PRIVATE** with production-grade authentication:
+- Dynamic Group: `oke-worker-nodes-dg` (OKE worker nodes)
+- IAM Policy: `oke-ocir-pull-policy` (allows read access to repos)
+- Authentication: imagePullSecrets with OCI auth tokens
+
+### Step 6.1: Generate Auth Token (For Pushing Images)
 
 1. OCI Console → Profile → User Settings → Auth Tokens
 2. Generate Token, name: `docker-registry`
 3. **Copy immediately** (shown only once)
 
-### Step 6.2: Docker Login
+> [!IMPORTANT]
+> Auth tokens are displayed only once. Store securely or regenerate if lost.
+
+### Step 6.2: Docker Login (For Pushing Images)
 
 ```bash
-# Format: docker login <region>.ocir.io
+# Login to push images (developers only)
 docker login bom.ocir.io
 # Username: <namespace>/oracleidentitycloudservice/<email>
-# Password: <auth-token>
+# Example: bm96q5bq36zw/oracleidentitycloudservice/jainish@gmail.com
+# Password: <auth-token from Step 6.1>
 ```
 
-### Step 6.3: Build & Push Images
+### Step 6.3: Create Kubernetes ImagePullSecret (One-Time Setup)
+
+Create the secret in the `guardrails-platform` namespace for pulling private images:
 
 ```bash
-# Standard workflow using the push script
-./scripts/oci-push-images.sh
+# Generate auth token in OCI Console (if not already done)
+# Then create the Kubernetes secret:
 
-# With specific version tag
-./scripts/oci-push-images.sh v1.0.0
+kubectl create secret docker-registry oci-registry-secret \
+  --docker-server=bom.ocir.io \
+  --docker-username='<namespace>/oracleidentitycloudservice/<email>' \
+  --docker-password='<auth-token>' \
+  --docker-email='<email>' \
+  -n guardrails-platform
+```
+
+**Example:**
+```bash
+kubectl create secret docker-registry oci-registry-secret \
+  --docker-server=bom.ocir.io \
+  --docker-username='bm96q5bq36zw/oracleidentitycloudservice/jainish6@gmail.com' \
+  --docker-password='YOUR_AUTH_TOKEN_HERE' \
+  --docker-email='jainish6@gmail.com' \
+  -n guardrails-platform
+```
+
+> [!NOTE]
+> This is a **one-time setup**. The secret is referenced in deployment manifests
+> via `imagePullSecrets` and doesn't need to be recreated unless the auth token expires.
+
+**To update the secret if token changes:**
+```bash
+kubectl delete secret oci-registry-secret -n guardrails-platform
+kubectl create secret docker-registry oci-registry-secret \
+  --docker-server=bom.ocir.io \
+  --docker-username='<namespace>/oracleidentitycloudservice/<email>' \
+  --docker-password='<new-auth-token>' \
+  --docker-email='<email>' \
+  -n guardrails-platform
+```
+
+### Step 6.4: Build & Push Images
+
+```bash
+# Build and push all images (tags with both :latest and :git-sha)
+./scripts/build-and-push.sh
+
+# Clean up old images (keeps latest 2 versions per repo)
+export OCI_COMPARTMENT_OCID="<tenancy-ocid>"
+./scripts/registry-cleanup.sh --dry-run  # Preview changes
+./scripts/registry-cleanup.sh            # Execute cleanup
 ```
 
 **Image Naming Convention:**
 ```
 <region>.ocir.io/<namespace>/guardrail/<service>:<tag>
+
+Registry: bom.ocir.io/bm96q5bq36zw/guardrail/
 
 Services:
   - guardrail-server
@@ -244,13 +300,51 @@ Services:
   - model-content-class
 
 Tags:
-  - latest (default)
-  - <git-sha> (auto-added)
-  - v1.0.0 (version, optional)
+  - latest (always points to newest build)
+  - <git-sha> (specific commit, e.g., 2ce91c8)
 ```
 
-> [!NOTE]
-> OCI auto-creates public repositories on first push. No terraform needed.
+### Repository Management
+
+**Verify repository visibility:**
+```bash
+oci artifacts container repository list \
+  --compartment-id <tenancy-ocid> \
+  --all --query 'data.items[].{"name":"display-name", "public":"is-public"}' \
+  --output json
+```
+
+**Make a repository private:**
+```bash
+REPO_ID=$(oci artifacts container repository list \
+  --compartment-id <tenancy-ocid> \
+  --display-name "guardrail/<service-name>" \
+  --query "data.items[0].id" --raw-output)
+
+oci artifacts container repository update \
+  --repository-id "$REPO_ID" \
+  --is-public false
+```
+
+### Storage Management
+
+**Free tier limit**: 500MB total storage
+
+**Check storage usage:**
+```bash
+TOTAL_BYTES=$(oci artifacts container image list \
+  --compartment-id <tenancy-ocid> \
+  --all \
+  --query 'sum(data.items[]."size-in-bytes")' \
+  --raw-output)
+
+echo "Storage: $((TOTAL_BYTES / 1024 / 1024))MB / 500MB"
+```
+
+**Cleanup strategy:**
+- Build script uses `--provenance=false` to prevent @unknown tags
+- Cleanup script keeps only latest 2 tagged images per repository
+- Run cleanup after major builds or when approaching storage limit
 
 ---
 
