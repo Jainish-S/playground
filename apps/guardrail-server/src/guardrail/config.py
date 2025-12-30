@@ -79,6 +79,20 @@ class Settings(BaseSettings):
         description="Successes needed to close circuit from half-open",
     )
 
+    # Retry configuration
+    RETRY_ENABLED: bool = Field(
+        default=True,
+        description="Enable retry logic for model calls",
+    )
+    RETRY_MAX_ATTEMPTS: int = Field(
+        default=2,
+        description="Maximum retry attempts (including initial call)",
+    )
+    RETRY_WAIT_MS: int = Field(
+        default=5,
+        description="Wait time between retries in milliseconds",
+    )
+
     # Note: Rate limiting is handled by Contour/Envoy at the ingress layer
     # See docs/CONTOUR_ARCHITECTURE.md for configuration
 
