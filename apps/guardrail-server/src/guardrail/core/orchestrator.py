@@ -19,7 +19,15 @@ from dataclasses import dataclass
 from enum import Enum
 
 import httpx
+import structlog
 from prometheus_client import Histogram, Counter, Gauge
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    retry_if_exception_type,
+    RetryCallState,
+)
 
 from py_common.schemas import ModelPredictResponse, ValidateResponse, ModelResultResponse
 from guardrail.config import settings
@@ -29,6 +37,8 @@ from guardrail.core.circuit_breaker import (
     CircuitState,
 )
 from guardrail.models.client import get_shared_client
+
+logger = structlog.get_logger()
 
 
 class AggregationStrategy(Enum):
@@ -64,6 +74,12 @@ MODEL_CALL_LATENCY = Histogram(
     buckets=[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 1.0],
 )
 
+RETRY_COUNT = Counter(
+    "guardrail_model_call_retries_total",
+    "Total number of retries for model calls",
+    ["model_name", "retry_number"],
+)
+
 # Pre-initialize histogram labels for all models
 # This ensures metrics are exposed even before first request
 _MODEL_NAMES = ["prompt-guard", "pii-detect", "hate-detect", "content-class"]
@@ -79,67 +95,115 @@ class ModelCallResult:
     error: str | None = None
 
 
+def before_retry_log(retry_state: RetryCallState) -> None:
+    """Log retry attempts and record metrics."""
+    if retry_state.outcome and retry_state.outcome.failed:
+        exception = retry_state.outcome.exception()
+        # Extract model_name from the function arguments
+        model_name = retry_state.args[0] if retry_state.args else "unknown"
+
+        logger.warning(
+            "model_call_retry",
+            model_name=model_name,
+            attempt=retry_state.attempt_number,
+            exception=str(exception),
+        )
+
+        RETRY_COUNT.labels(
+            model_name=model_name,
+            retry_number=retry_state.attempt_number,
+        ).inc()
+
+
 async def call_model(
     model_name: str,
     text: str,
     request_id: str,
 ) -> ModelCallResult:
-    """Call a single model with circuit breaker protection.
-    
+    """Call a single model with circuit breaker and retry protection.
+
     This function:
     1. Checks circuit breaker state
-    2. Makes HTTP call if allowed
+    2. Makes HTTP call with retry logic if enabled
     3. Records success/failure to circuit breaker
-    
+
     Args:
         model_name: Name of the model to call
         text: Text to analyze
         request_id: Request ID for tracing
-        
+
     Returns:
         ModelCallResult with success/failure info
     """
     cb = get_circuit_breaker(model_name)
-    
-    # Check circuit breaker
+
+    # Check circuit breaker - skip if open
     if not cb.allow_request():
         return ModelCallResult(
             model_name=model_name,
             success=False,
             error=f"Circuit breaker open for {model_name}",
         )
-    
-    start_time = time.perf_counter()
-    try:
+
+    # Inner function with retry logic
+    @retry(
+        stop=stop_after_attempt(settings.RETRY_MAX_ATTEMPTS),
+        wait=wait_fixed(settings.RETRY_WAIT_MS / 1000),
+        retry=retry_if_exception_type((
+            httpx.TimeoutException,
+            httpx.ConnectError,
+        )),
+        before_sleep=before_retry_log,
+        reraise=True,
+    )
+    async def _call_with_retry():
+        """Inner function with retry decorator."""
+        start_time = time.perf_counter()
+
         client = await get_shared_client(model_name)
-        
+
         response = await client.post(
             "/predict",
             json={"text": text, "request_id": request_id},
         )
         response.raise_for_status()
-        
+
         # Record latency
         duration = time.perf_counter() - start_time
         MODEL_CALL_LATENCY.labels(model_name=model_name).observe(duration)
-        
-        result = ModelPredictResponse.model_validate(response.json())
-        
-        # Record success
+
+        return ModelPredictResponse.model_validate(response.json())
+
+    # Execute with or without retry based on config
+    try:
+        if settings.RETRY_ENABLED:
+            result = await _call_with_retry()
+        else:
+            # Call directly without retry if disabled
+            result = await _call_with_retry.__wrapped__()
+
+        # Record success to circuit breaker
         await cb.record_success()
-        
+
         return ModelCallResult(
             model_name=model_name,
             success=True,
             response=result,
         )
-        
+
     except httpx.TimeoutException:
         await cb.record_failure()
         return ModelCallResult(
             model_name=model_name,
             success=False,
-            error=f"Timeout calling {model_name}",
+            error=f"Timeout calling {model_name} (after {settings.RETRY_MAX_ATTEMPTS} attempts)",
+        )
+    except httpx.ConnectError:
+        await cb.record_failure()
+        return ModelCallResult(
+            model_name=model_name,
+            success=False,
+            error=f"Connection error calling {model_name} (after {settings.RETRY_MAX_ATTEMPTS} attempts)",
         )
     except httpx.HTTPStatusError as e:
         await cb.record_failure()
