@@ -9,11 +9,10 @@ metadata:
   name: guardrail-ingress
   namespace: guardrails-platform
   annotations:
-    # Contour will pick this up when installed
-    kubernetes.io/ingress.class: contour
     # cert-manager auto TLS
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  ingressClassName: contour
   tls:
     - hosts:
         - api.guardrail.com
