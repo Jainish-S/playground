@@ -12,8 +12,18 @@ data:
   MODEL_CONTENT_CLASS_URL: "http://model-content-class:8000"
   
   # Timeouts and circuit breaker
-  MODEL_TIMEOUT_SECONDS: "0.08"
+  MODEL_TIMEOUT_SECONDS: "0.200"
   MODEL_CONNECT_TIMEOUT: "0.02"
   CB_FAILURE_THRESHOLD: "5"
   CB_RECOVERY_TIMEOUT: "30"
   CB_SUCCESS_THRESHOLD: "3"
+
+  # Retry configuration
+  RETRY_ENABLED: "true"
+  RETRY_MAX_ATTEMPTS: "2"
+  RETRY_WAIT_MS: "5"
+
+  # ML inference simulation
+  INFERENCE_DELAY_ENABLED: "true"
+  INFERENCE_DELAY_MIN_MS: "40"
+  INFERENCE_DELAY_MAX_MS: "60"

@@ -13,7 +13,7 @@ metadata:
     app: model-prompt-guard
     type: ml-model
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: model-prompt-guard
@@ -27,11 +27,15 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      terminationGracePeriodSeconds: 15
       containers:
         - name: model
           image: bom.ocir.io/bm96q5bq36zw/guardrail/model-prompt-guard:latest
           ports:
             - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-config
           resources:
             requests:
               cpu: 50m
@@ -39,18 +43,24 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 8000
             initialDelaySeconds: 5
-            periodSeconds: 5
+            periodSeconds: 3
+            failureThreshold: 2
       imagePullSecrets:
         - name: oci-registry-secret
 ---
@@ -80,7 +90,7 @@ metadata:
     app: model-pii-detect
     type: ml-model
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: model-pii-detect
@@ -94,11 +104,15 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      terminationGracePeriodSeconds: 15
       containers:
         - name: model
           image: bom.ocir.io/bm96q5bq36zw/guardrail/model-pii-detect:latest
           ports:
             - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-config
           resources:
             requests:
               cpu: 50m
@@ -106,18 +120,24 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 8000
             initialDelaySeconds: 5
-            periodSeconds: 5
+            periodSeconds: 3
+            failureThreshold: 2
       imagePullSecrets:
         - name: oci-registry-secret
 ---
@@ -147,7 +167,7 @@ metadata:
     app: model-hate-detect
     type: ml-model
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: model-hate-detect
@@ -161,11 +181,15 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      terminationGracePeriodSeconds: 15
       containers:
         - name: model
           image: bom.ocir.io/bm96q5bq36zw/guardrail/model-hate-detect:latest
           ports:
             - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-config
           resources:
             requests:
               cpu: 50m
@@ -173,18 +197,24 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 8000
             initialDelaySeconds: 5
-            periodSeconds: 5
+            periodSeconds: 3
+            failureThreshold: 2
       imagePullSecrets:
         - name: oci-registry-secret
 ---
@@ -214,7 +244,7 @@ metadata:
     app: model-content-class
     type: ml-model
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: model-content-class
@@ -228,11 +258,15 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      terminationGracePeriodSeconds: 15
       containers:
         - name: model
           image: bom.ocir.io/bm96q5bq36zw/guardrail/model-content-class:latest
           ports:
             - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-config
           resources:
             requests:
               cpu: 50m
@@ -240,18 +274,24 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 8000
             initialDelaySeconds: 5
-            periodSeconds: 5
+            periodSeconds: 3
+            failureThreshold: 2
       imagePullSecrets:
         - name: oci-registry-secret
 ---
