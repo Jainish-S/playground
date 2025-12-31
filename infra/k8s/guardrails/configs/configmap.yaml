@@ -12,10 +12,12 @@ data:
   MODEL_CONTENT_CLASS_URL: "http://model-content-class:8000"
   
   # Timeouts and circuit breaker
-  MODEL_TIMEOUT_SECONDS: "0.200"
-  MODEL_CONNECT_TIMEOUT: "0.02"
-  CB_FAILURE_THRESHOLD: "5"
-  CB_RECOVERY_TIMEOUT: "30"
+  # Timeout must accommodate: inference (40-60ms) + network + queueing under load
+  MODEL_TIMEOUT_SECONDS: "2.0"
+  MODEL_CONNECT_TIMEOUT: "0.5"
+  # More tolerant thresholds for production stability
+  CB_FAILURE_THRESHOLD: "20"
+  CB_RECOVERY_TIMEOUT: "10"
   CB_SUCCESS_THRESHOLD: "3"
 
   # Retry configuration
@@ -23,7 +25,8 @@ data:
   RETRY_MAX_ATTEMPTS: "2"
   RETRY_WAIT_MS: "5"
 
-  # ML inference simulation
+  # ML inference simulation (enabled to simulate realistic ML latency)
+  # Simulates 40-60ms per model call for autoscaling validation
   INFERENCE_DELAY_ENABLED: "true"
   INFERENCE_DELAY_MIN_MS: "40"
   INFERENCE_DELAY_MAX_MS: "60"
