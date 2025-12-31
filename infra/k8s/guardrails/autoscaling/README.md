@@ -120,7 +120,58 @@ kubectl get hpa -n guardrails-platform -o wide
 kubectl get events -n guardrails-platform | grep HorizontalPodAutoscaler
 ```
 
-### Step 6: Fix Metrics-Server (Completed)
+### Step 6: Update Prometheus Adapter Configuration
+
+If you need to modify the prometheus-adapter configuration (e.g., add new custom metrics, adjust query patterns, or change Prometheus URL):
+
+```bash
+# 1. Edit the values.yaml file
+vim infra/k8s/observability/prometheus-adapter/values.yaml
+
+# 2. Upgrade the Helm release with new configuration
+helm upgrade prometheus-adapter prometheus-community/prometheus-adapter \
+  -n observability \
+  -f infra/k8s/observability/prometheus-adapter/values.yaml
+
+# 3. Wait for rollout to complete
+kubectl rollout status deployment/prometheus-adapter -n observability
+
+# 4. Verify custom metrics are updated
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq -r '.resources[].name' | grep -E "(guardrail|model)"
+
+# 5. Test specific metric
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/guardrails-platform/pods/*/guardrail_in_flight_requests" | jq .
+```
+
+**Common configuration changes:**
+
+- **Add new custom metric**: Add new entry under `rules.custom` with `seriesQuery`, `name`, and `metricsQuery`
+- **Change Prometheus URL**: Update `prometheus.url` and `prometheus.port`
+- **Adjust metric aggregation**: Modify `metricsQuery` to change how metrics are aggregated (e.g., `sum`, `avg`, `rate`)
+- **Fix metric labels**: Update `resources.overrides` to map Prometheus labels to Kubernetes resource types
+
+**Example: Adding a new custom metric**
+
+```yaml
+rules:
+  custom:
+    # Existing metrics...
+    
+    # New metric for request latency
+    - seriesQuery: 'guardrail_request_latency_seconds_bucket{kubernetes_namespace!="",pod!=""}'
+      resources:
+        overrides:
+          kubernetes_namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^guardrail_request_latency_seconds_bucket$"
+        as: "guardrail_request_latency_p99"
+      metricsQuery: 'histogram_quantile(0.99, sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>, le))'
+```
+
+After editing, always run `helm upgrade` (not `helm install`) to apply changes.
+
+### Step 7: Fix Metrics-Server (Completed)
 
 The following RBAC fixes were applied to enable CPU metrics:
 

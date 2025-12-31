@@ -39,7 +39,7 @@ spec:
           name: guardrail_in_flight_requests
         target:
           type: AverageValue
-          averageValue: "15"
+          averageValue: "50"
 
     # SECONDARY: CPU utilization (safety net)
     - type: Resource

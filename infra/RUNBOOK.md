@@ -173,6 +173,17 @@ kubectl create secret generic grafana-credentials \
 kubectl apply -k infra/k8s/observability/
 ```
 
+> [!TIP]
+> **Prometheus Adapter & HPA Configuration**  
+> To modify custom metrics for HPA autoscaling, see detailed guide:  
+> `infra/k8s/guardrails/autoscaling/README.md` (Step 6: Update Prometheus Adapter Configuration)
+> 
+> Quick command to update prometheus-adapter:
+> ```bash
+> helm upgrade prometheus-adapter prometheus-community/prometheus-adapter \
+>   -n observability -f infra/k8s/observability/prometheus-adapter/values.yaml
+> ```
+
 ---
 
 ## Access Services (via Twingate)
