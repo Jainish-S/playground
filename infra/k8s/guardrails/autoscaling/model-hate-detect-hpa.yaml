@@ -34,13 +34,13 @@ spec:
     - type: Pods
       pods:
         metric:
-          name: model_requests_per_second
+          name: model_in_flight_requests
           selector:
             matchLabels:
               model_name: "hate-detect"
         target:
           type: AverageValue
-          averageValue: "10"
+          averageValue: "800m"
 
 
   behavior:

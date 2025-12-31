@@ -1,6 +1,18 @@
 # Prometheus Adapter Helm Values
 # Exposes custom Prometheus metrics to Kubernetes HPA
 # Enables autoscaling based on in-flight requests (leading indicator for latency)
+#
+# TO APPLY CHANGES:
+#   helm upgrade prometheus-adapter prometheus-community/prometheus-adapter \
+#     -n observability -f infra/k8s/observability/prometheus-adapter/values.yaml
+#
+# VERIFY CHANGES:
+#   kubectl rollout status deployment/prometheus-adapter -n observability
+#   kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq -r '.resources[].name'
+#
+# For detailed documentation, see:
+#   infra/k8s/guardrails/autoscaling/README.md (Step 6)
+
 
 prometheus:
   url: http://prometheus.observability.svc.cluster.local
@@ -35,3 +47,14 @@ rules:
         matches: "^model_inference_total$"
         as: "model_requests_per_second"
       metricsQuery: 'rate(<<.Series>>{<<.LabelMatchers>>,status="success"}[1m])'
+
+    # "How many requests are currently stuck inside the model container?"
+    - seriesQuery: 'model_in_flight_requests{kubernetes_namespace!="",pod!="",model_name!=""}'
+      resources:
+        overrides:
+          kubernetes_namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^model_in_flight_requests$"
+        as: "model_in_flight_requests"
+      metricsQuery: 'sum(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)'

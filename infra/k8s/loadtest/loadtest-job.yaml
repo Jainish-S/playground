@@ -7,7 +7,7 @@ metadata:
 data:
   TARGET: "http://envoy.projectcontour"
   DURATION: "120s"
-  RPS: "30"
+  RPS: "20"
   WORKERS: "10"
   TENANTS: "4"
   # Send requests through Envoy ingress with proper Host header
