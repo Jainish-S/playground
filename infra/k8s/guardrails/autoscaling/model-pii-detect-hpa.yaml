@@ -1,0 +1,70 @@
+# Horizontal Pod Autoscaler for PII Detect Model
+# Scales based on in-flight requests (primary) and CPU (secondary)
+#
+# Scaling Strategy:
+# - Min: 2 replicas (HA baseline)
+# - Max: 8 replicas (400m CPU, handles 800+ concurrent requests)
+# - Primary metric: 2 in-flight per pod (queueing indicator)
+# - Secondary metric: 60% CPU (safety net)
+# - Scale-up: Faster than guardrail (20s window, models are bottleneck)
+# - Scale-down: Conservative (180s window, -1 pod/min)
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: model-pii-detect-hpa
+  namespace: guardrails-platform
+  labels:
+    app: model-pii-detect
+    type: ml-model
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: model-pii-detect
+
+  minReplicas: 2
+  maxReplicas: 8
+
+  metrics:
+    # PRIMARY: Request rate (requests per second)
+    # Reliable metric for both real and dummy model services
+    # Target: 10 RPS per pod (proactive scaling for P50 < 100ms)
+    # At 60 total RPS = 60 RPS per model, needs 6 pods
+    - type: Pods
+      pods:
+        metric:
+          name: model_requests_per_second
+          selector:
+            matchLabels:
+              model_name: "pii-detect"
+        target:
+          type: AverageValue
+          averageValue: "10"
+
+  behavior:
+    scaleUp:
+      # Stabilization: 20s (faster than guardrail's 30s)
+      # Models are downstream bottleneck and must scale first
+      stabilizationWindowSeconds: 20
+      policies:
+        # Policy 1: Double pods (100% increase)
+        - type: Percent
+          value: 100
+          periodSeconds: 20
+        # Policy 2: Add 2 pods
+        - type: Pods
+          value: 2
+          periodSeconds: 20
+      selectPolicy: Max
+
+    scaleDown:
+      # Stabilization: 3min (shorter than guardrail's 5min)
+      # Models follow guardrail traffic patterns
+      stabilizationWindowSeconds: 180
+      policies:
+        # Conservative: Remove 1 pod at a time
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min

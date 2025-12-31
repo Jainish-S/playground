@@ -1,0 +1,37 @@
+# Prometheus Adapter Helm Values
+# Exposes custom Prometheus metrics to Kubernetes HPA
+# Enables autoscaling based on in-flight requests (leading indicator for latency)
+
+prometheus:
+  url: http://prometheus.observability.svc.cluster.local
+  port: 9090
+
+rules:
+  custom:
+    # Guardrail in-flight requests
+    # Primary metric for guardrail-server HPA
+    # Target: 5 in-flight per pod (50% of max capacity)
+    - seriesQuery: 'guardrail_in_flight_requests{kubernetes_namespace!="",pod!=""}'
+      resources:
+        overrides:
+          kubernetes_namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^guardrail_in_flight_requests$"
+        as: "guardrail_in_flight_requests"
+      metricsQuery: 'sum(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)'
+
+    # Model request rate (requests per second)
+    # Primary metric for model service HPAs - more reliable than in-flight for fast services
+    # Uses 1m rate window to smooth out spikes
+    # Target: 10 RPS per pod (models handle ~15 RPS max per pod)
+    # NOTE: model_name label must be preserved for HPA label selectors
+    - seriesQuery: 'model_inference_total{kubernetes_namespace!="",pod!="",model_name!="",status="success"}'
+      resources:
+        overrides:
+          kubernetes_namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "^model_inference_total$"
+        as: "model_requests_per_second"
+      metricsQuery: 'rate(<<.Series>>{<<.LabelMatchers>>,status="success"}[1m])'

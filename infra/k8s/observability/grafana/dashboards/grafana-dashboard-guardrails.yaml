@@ -54,7 +54,7 @@ data:
           "id": 2,
           "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(guardrail_request_total[1m]))", "legendFormat": "Total Requests", "refId": "A"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(envoy_cluster_upstream_rq_total{envoy_cluster_name=~\"guardrails-platform_guardrail-server.*\"}[1m]))", "legendFormat": "Total Requests (Ingress)", "refId": "A"}
           ],
           "title": "Overall Request Rate",
           "type": "timeseries"

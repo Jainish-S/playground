@@ -68,3 +68,44 @@ data:
               severity: warning
             annotations:
               summary: "PVC {{ $labels.persistentvolumeclaim }} is > 85% full"
+
+      - name: hpa_alerts
+        interval: 30s
+        rules:
+          # HPA cannot scale due to quota
+          - alert: HPAConstrainedByQuota
+            expr: |
+              kube_horizontalpodautoscaler_status_desired_replicas >
+              kube_horizontalpodautoscaler_status_current_replicas
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "HPA {{ $labels.horizontalpodautoscaler }} constrained"
+              description: "Desired {{ $value }} replicas but stuck at current. Check resource quotas and pod limits."
+
+          # Latency SLA breach despite max scaling
+          - alert: LatencySLABreachAtMaxScale
+            expr: |
+              histogram_quantile(0.99,
+                rate(guardrail_request_latency_seconds_bucket[2m])
+              ) > 0.1
+              AND
+              kube_deployment_status_replicas{deployment="guardrail-server", namespace="guardrails-platform"} >= 8
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "P99 latency > 100ms despite scaling to {{ $value }} pods"
+              description: "System at capacity. Consider increasing resource limits or reducing traffic."
+
+          # HPA disabled or misconfigured
+          - alert: HPANotScaling
+            expr: |
+              kube_horizontalpodautoscaler_status_condition{condition="ScalingActive",status="false", namespace="guardrails-platform"} == 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "HPA {{ $labels.horizontalpodautoscaler }} is not scaling"
+              description: "Check HPA configuration and ensure custom metrics are available via Prometheus Adapter."

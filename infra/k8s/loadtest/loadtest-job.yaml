@@ -6,10 +6,10 @@ metadata:
   namespace: guardrails-platform
 data:
   TARGET: "http://envoy.projectcontour"
-  DURATION: "300s"
+  DURATION: "120s"
   RPS: "30"
-  WORKERS: "2"
-  TENANTS: "2"
+  WORKERS: "10"
+  TENANTS: "4"
   # Send requests through Envoy ingress with proper Host header
   HOST_HEADER: "guardrail.local"
 ---

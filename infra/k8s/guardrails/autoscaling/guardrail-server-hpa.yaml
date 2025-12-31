@@ -1,0 +1,71 @@
+# Horizontal Pod Autoscaler for Guardrail Server
+# The guardrail-server is an ORCHESTRATOR - it makes async calls to models
+# and waits for responses. It doesn't do heavy compute, so scaling should
+# be CONSERVATIVE and SECONDARY to model scaling.
+#
+# Scaling Strategy:
+# - Min: 2 replicas (HA baseline)
+# - Max: 10 replicas
+# - Primary metric: 15 in-flight per pod (high threshold - orchestrator can handle many)
+# - Secondary metric: 70% CPU (safety net)
+# - Scale-up: CONSERVATIVE (120s window - wait for models to scale first)
+# - Scale-down: Conservative (300s window)
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: guardrail-server-hpa
+  namespace: guardrails-platform
+  labels:
+    app: guardrail-server
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: guardrail-server
+
+  minReplicas: 2
+  maxReplicas: 10
+
+  metrics:
+    # PRIMARY: In-flight requests
+    # Target: 15 in-flight per pod (HIGH threshold)
+    # The orchestrator can handle many concurrent async HTTP calls
+    # since it's just waiting on I/O (model responses)
+    # Scale only when truly overloaded
+    - type: Pods
+      pods:
+        metric:
+          name: guardrail_in_flight_requests
+        target:
+          type: AverageValue
+          averageValue: "15"
+
+    # SECONDARY: CPU utilization (safety net)
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+  behavior:
+    scaleUp:
+      # Stabilization: 120s (2 min) - WAIT FOR MODELS TO SCALE FIRST
+      # Models are the bottleneck, let them scale before adding orchestrator pods
+      stabilizationWindowSeconds: 120
+      policies:
+        # Conservative: Add 1 pod at a time
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min
+
+    scaleDown:
+      # Stabilization: 5min anti-flapping window
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min
