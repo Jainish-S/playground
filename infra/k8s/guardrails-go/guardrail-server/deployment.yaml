@@ -1,0 +1,75 @@
+# Guardrail Server Go - Deployment
+# OCI Registry: bom.ocir.io/bm96q5bq36zw/guardrail/guardrail-server-go
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardrail-server
+  namespace: guardrails-go
+  labels:
+    app: guardrail-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: guardrail-server
+  template:
+    metadata:
+      labels:
+        app: guardrail-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: server
+          image: bom.ocir.io/bm96q5bq36zw/guardrail/guardrail-server-go:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-go-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v1/ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 2
+      imagePullSecrets:
+        - name: oci-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guardrail-server
+  namespace: guardrails-go
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: guardrail-server
+  ports:
+    - port: 8000
+      targetPort: 8000

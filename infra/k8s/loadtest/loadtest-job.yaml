@@ -5,13 +5,11 @@ metadata:
   name: loadtest-config
   namespace: guardrails-platform
 data:
-  TARGET: "http://envoy.projectcontour"
+  TARGET: "http://guardrail-server.guardrails-go.svc.cluster.local:8000"
   DURATION: "120s"
-  RPS: "20"
+  RPS: "15"
   WORKERS: "10"
-  TENANTS: "4"
-  # Send requests through Envoy ingress with proper Host header
-  HOST_HEADER: "guardrail.local"
+  TENANTS: "2"
 ---
 # Load Test Job using ConfigMap
 apiVersion: batch/v1
@@ -31,6 +29,10 @@ spec:
         app: loadtest
     spec:
       restartPolicy: Never
+      hostAliases:
+        - ip: "10.96.53.109"
+          hostnames:
+            - "guardrail-go.local"
       containers:
         - name: loadtest
           image: bom.ocir.io/bm96q5bq36zw/guardrail/loadtest:latest

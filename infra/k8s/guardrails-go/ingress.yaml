@@ -1,0 +1,19 @@
+# Guardrails Go - HTTPProxy for Contour
+# Routes external traffic to the guardrail-server-go service
+
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: guardrail-go
+  namespace: guardrails-go
+spec:
+  virtualhost:
+    fqdn: guardrail-go.local
+  routes:
+    - conditions:
+        - prefix: /
+      services:
+        - name: guardrail-server
+          port: 8000
+      timeoutPolicy:
+        response: 5s

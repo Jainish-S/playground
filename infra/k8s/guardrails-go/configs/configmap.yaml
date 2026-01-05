@@ -1,0 +1,36 @@
+# Guardrails Go - ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guardrail-go-config
+  namespace: guardrails-go
+data:
+  # Server configuration
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  DEBUG: "false"
+
+  # Model service URLs (internal K8s DNS)
+  MODEL_PROMPT_GUARD_URL: "http://model-prompt-guard:8000"
+  MODEL_PII_DETECT_URL: "http://model-pii-detect:8000"
+  MODEL_HATE_DETECT_URL: "http://model-hate-detect:8000"
+  MODEL_CONTENT_CLASS_URL: "http://model-content-class:8000"
+
+  # Model call configuration (seconds as float)
+  MODEL_TIMEOUT_SECONDS: "0.4"
+  MODEL_CONNECT_TIMEOUT: "0.05"
+
+  # Circuit breaker configuration
+  CB_FAILURE_THRESHOLD: "10"
+  CB_RECOVERY_TIMEOUT: "10"
+  CB_SUCCESS_THRESHOLD: "3"
+
+  # Retry configuration
+  RETRY_ENABLED: "true"
+  RETRY_MAX_ATTEMPTS: "2"
+  RETRY_WAIT_MS: "5"
+
+  # Model service inference delay (simulates ML processing)
+  INFERENCE_DELAY_ENABLED: "true"
+  INFERENCE_DELAY_MIN_MS: "40"
+  INFERENCE_DELAY_MAX_MS: "60"

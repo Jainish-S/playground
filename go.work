@@ -1,0 +1,11 @@
+go 1.23
+
+use (
+	./apps/guardrail-server-go
+	./apps/model-content-class-go
+	./apps/model-hate-detect-go
+	./apps/model-pii-detect-go
+	./apps/model-prompt-guard-go
+	./packages/go-common
+	./tools/loadtest
+)

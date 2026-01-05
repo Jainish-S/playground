@@ -508,6 +508,39 @@ kubectl exec -i postgresql-0 -- pg_restore -d guardrails < /tmp/latest.dump
 
 ### Scaling
 
+#### Capacity Planning Formula
+
+To determine the number of model pods needed for your target RPS (Requests Per Second), use this formula:
+
+```
+RPS = (1000ms / avg_end_to_end_latency_ms) × model_pods
+```
+
+**Example calculations:**
+
+For a model with 70ms average end-to-end latency:
+
+- **14 RPS** → 1 pod per model (baseline)
+  - Cost: ~$30/month (4 models × 1 pod × $0.0208/hr)
+
+- **50 RPS** → 4 pods per model
+  - Cost: ~$120/month (4 models × 4 pods)
+
+- **100 RPS** → 7 pods per model
+  - Cost: ~$210/month (4 models × 7 pods)
+
+- **1000 RPS** → 70 pods per model
+  - Cost: ~$2,097/month (4 models × 70 pods)
+
+**Traffic spike buffer:** For 2x traffic spikes, double your pod count. For example, if you need to handle 50 RPS steady-state but want to handle 100 RPS spikes, provision for 100 RPS (7 pods per model).
+
+**Key variables:**
+- `avg_end_to_end_latency_ms`: Measured P50 or P90 latency from your SLO
+- `model_pods`: Number of replicas for each ML model
+- Cost assumes OCI compute at ~$0.0208/hr per pod
+
+Use load testing to validate these numbers for your specific workload.
+
 **Manual scaling**:
 ```bash
 # Scale guardrail server
