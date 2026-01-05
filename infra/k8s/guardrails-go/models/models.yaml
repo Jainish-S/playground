@@ -1,0 +1,323 @@
+# ML Model Services Go - Kubernetes Deployments
+# All models are deployed as separate services for fault isolation
+# OCI Registry: bom.ocir.io/bm96q5bq36zw/guardrail/
+
+---
+# Prompt Guard Model Go
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-prompt-guard
+  namespace: guardrails-go
+  labels:
+    app: model-prompt-guard
+    type: ml-model
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: model-prompt-guard
+  template:
+    metadata:
+      labels:
+        app: model-prompt-guard
+        type: ml-model
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: model
+          image: bom.ocir.io/bm96q5bq36zw/guardrail/model-prompt-guard-go:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-go-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 2
+      imagePullSecrets:
+        - name: oci-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-prompt-guard
+  namespace: guardrails-go
+  labels:
+    app: model-prompt-guard
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: model-prompt-guard
+  ports:
+    - port: 8000
+      targetPort: 8000
+
+---
+# PII Detect Model Go
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-pii-detect
+  namespace: guardrails-go
+  labels:
+    app: model-pii-detect
+    type: ml-model
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: model-pii-detect
+  template:
+    metadata:
+      labels:
+        app: model-pii-detect
+        type: ml-model
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: model
+          image: bom.ocir.io/bm96q5bq36zw/guardrail/model-pii-detect-go:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-go-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 3
+      imagePullSecrets:
+        - name: oci-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-pii-detect
+  namespace: guardrails-go
+  labels:
+    app: model-pii-detect
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: model-pii-detect
+  ports:
+    - port: 8000
+      targetPort: 8000
+
+---
+# Hate Detect Model Go
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-hate-detect
+  namespace: guardrails-go
+  labels:
+    app: model-hate-detect
+    type: ml-model
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: model-hate-detect
+  template:
+    metadata:
+      labels:
+        app: model-hate-detect
+        type: ml-model
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: model
+          image: bom.ocir.io/bm96q5bq36zw/guardrail/model-hate-detect-go:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-go-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 3
+      imagePullSecrets:
+        - name: oci-registry-secret
+      imagePullSecrets:
+        - name: oci-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-hate-detect
+  namespace: guardrails-go
+  labels:
+    app: model-hate-detect
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: model-hate-detect
+  ports:
+    - port: 8000
+      targetPort: 8000
+
+---
+# Content Classification Model Go
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-content-class
+  namespace: guardrails-go
+  labels:
+    app: model-content-class
+    type: ml-model
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: model-content-class
+  template:
+    metadata:
+      labels:
+        app: model-content-class
+        type: ml-model
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: model
+          image: bom.ocir.io/bm96q5bq36zw/guardrail/model-content-class-go:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: guardrail-go-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 8"]
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 3
+      imagePullSecrets:
+        - name: oci-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-content-class
+  namespace: guardrails-go
+  labels:
+    app: model-content-class
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: model-content-class
+  ports:
+    - port: 8000
+      targetPort: 8000

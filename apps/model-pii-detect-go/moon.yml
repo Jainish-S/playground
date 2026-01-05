@@ -1,0 +1,23 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'go'
+type: 'application'
+
+tasks:
+  dev:
+    command: 'go'
+    args: ['run', './cmd/server']
+    local: true
+
+  build:
+    command: 'go'
+    args: ['build', '-o', 'bin/server', './cmd/server']
+    inputs: ['**/*.go', 'go.mod']
+    outputs: ['bin/']
+
+  test:
+    command: 'go'
+    args: ['test', '-v', '-cover', './...']
+
+  docker:
+    command: 'docker'
+    args: ['build', '-f', 'Dockerfile', '-t', 'model-pii-detect-go:latest', '../../']

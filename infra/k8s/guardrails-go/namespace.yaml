@@ -1,0 +1,8 @@
+# Guardrails Go Platform Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: guardrails-go
+  labels:
+    app.kubernetes.io/name: guardrails-go
+    app.kubernetes.io/part-of: llm-guardrails-platform

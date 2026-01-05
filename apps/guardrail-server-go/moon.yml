@@ -1,0 +1,71 @@
+# apps/guardrail-server-go/moon.yml
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: 'go'
+type: 'application'
+
+tasks:
+  # Development server
+  dev:
+    command: 'go'
+    args:
+      - 'run'
+      - './cmd/server'
+    local: true
+
+  # Build binary
+  build:
+    command: 'go'
+    args:
+      - 'build'
+      - '-o'
+      - 'bin/server'
+      - './cmd/server'
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+    outputs:
+      - 'bin/'
+
+  # Run tests
+  test:
+    command: 'go'
+    args:
+      - 'test'
+      - '-v'
+      - '-cover'
+      - './...'
+    inputs:
+      - '**/*.go'
+
+  # Lint with golangci-lint
+  lint:
+    command: 'golangci-lint'
+    args:
+      - 'run'
+      - './...'
+    inputs:
+      - '**/*.go'
+
+  # Format code
+  format:
+    command: 'gofmt'
+    args:
+      - '-w'
+      - '.'
+
+  # Build Docker image
+  docker:
+    command: 'docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile'
+      - '-t'
+      - 'guardrail-server-go:latest'
+      - '../../'
+    inputs:
+      - '**/*.go'
+      - 'Dockerfile'
+      - '../../packages/go-common/**/*.go'
