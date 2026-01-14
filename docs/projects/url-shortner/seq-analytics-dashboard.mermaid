@@ -1,0 +1,58 @@
+---
+title: Analytics Dashboard Query Flow
+---
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as SvelteKit Frontend
+    participant API as Go API Server
+    participant Redis
+    participant DB as PostgreSQL + TimescaleDB
+
+    User->>Web: Open analytics dashboard
+    Web->>Web: Load dashboard shell
+    
+    par Parallel API calls for dashboard widgets
+        Web->>API: GET /api/urls/{id}/analytics?range=7d
+        Web->>API: GET /api/urls/{id}/analytics/geo?range=7d
+        Web->>API: GET /api/urls/{id}/analytics/devices?range=7d
+        Web->>API: GET /api/urls/{id}/analytics/referrers?range=7d
+    end
+    
+    Note over API,Redis: Check cache for expensive queries
+    
+    API->>Redis: GET analytics:{url_id}:7d:overview
+    
+    alt Cache Hit (TTL: 5 minutes)
+        Redis-->>API: Cached analytics JSON
+    else Cache Miss - Query Aggregates
+        Redis-->>API: nil
+        
+        Note over API,DB: Query continuous aggregates (fast!)
+        
+        API->>DB: SELECT * FROM hourly_stats<br/>WHERE url_id = {id}<br/>AND bucket >= NOW() - INTERVAL '7 days'
+        DB-->>API: Hourly aggregated data
+        
+        API->>DB: SELECT country, SUM(clicks) FROM daily_stats<br/>WHERE url_id = {id}<br/>AND bucket >= NOW() - INTERVAL '7 days'<br/>GROUP BY country
+        DB-->>API: Geo breakdown
+        
+        API->>API: Format response JSON
+        
+        API->>Redis: SET analytics:{url_id}:7d:overview<br/>EX 300 (5 min TTL)
+        Redis-->>API: OK
+    end
+    
+    API-->>Web: Analytics data JSON
+    
+    Web->>Web: Render charts<br/>(shadcn charts / recharts)
+    Web-->>User: Display dashboard
+    
+    Note over User,Web: Real-time updates (optional)
+    
+    loop Every 30 seconds (if tab active)
+        Web->>API: GET /api/urls/{id}/analytics/live
+        API->>Redis: GET analytics:buffer:count:{url_id}
+        Redis-->>API: Recent click count
+        API-->>Web: Live stats delta
+        Web->>Web: Update counters
+    end

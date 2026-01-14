@@ -1,0 +1,43 @@
+---
+title: URL Update Flow (Modifiable URLs)
+---
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as SvelteKit Frontend
+    participant API as Go API Server
+    participant Redis
+    participant DB as PostgreSQL
+
+    User->>Web: Edit destination URL or notes
+    Web->>Web: Client-side validation
+    Web->>API: PATCH /api/urls/{id}<br/>{destination_url?, notes?, metadata?}
+    
+    API->>API: Validate JWT token
+    API->>API: Validate request body
+    
+    API->>DB: SELECT * FROM urls<br/>WHERE id = {id} AND user_id = {user_id}
+    DB-->>API: Current URL record
+    
+    alt URL not found or not owned by user
+        API-->>Web: 404 Not Found
+        Web-->>User: Error: URL not found
+    else URL found
+        Note over API,DB: Save history for audit trail
+        
+        API->>DB: INSERT INTO url_history<br/>(url_id, previous_url, new_url, changed_by)
+        DB-->>API: History saved
+        
+        API->>DB: UPDATE urls SET<br/>destination_url = {new_url},<br/>notes = {notes},<br/>updated_at = NOW()<br/>WHERE id = {id}
+        DB-->>API: Updated record
+        
+        Note over API,Redis: Invalidate cache to ensure fresh data
+        
+        API->>Redis: DEL url:{short_code}
+        Redis-->>API: OK
+        
+        API-->>Web: 200 OK<br/>{updated URL record}
+        Web-->>User: URL updated successfully<br/>Short URL & QR unchanged ✓
+    end
+    
+    Note over User: Next redirect will fetch<br/>new destination from DB<br/>and re-populate cache

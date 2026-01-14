@@ -1,0 +1,42 @@
+---
+title: URL Redirect Flow (Hot Path)
+---
+sequenceDiagram
+    autonumber
+    actor Client as User/Browser
+    participant LB as Load Balancer
+    participant API as Go API Server
+    participant Redis
+    participant DB as PostgreSQL
+    participant GeoIP as MaxMind GeoIP
+
+    Client->>LB: GET /abc123
+    LB->>LB: Rate limit check
+    LB->>API: Forward request
+    
+    API->>Redis: GET url:abc123
+    
+    alt Cache Hit (Fast Path ~1ms)
+        Redis-->>API: destination_url
+    else Cache Miss
+        Redis-->>API: nil
+        API->>DB: SELECT destination_url FROM urls<br/>WHERE short_code = 'abc123' AND is_active = true
+        DB-->>API: destination_url
+        API-->>Redis: SET url:abc123 → destination_url EX 3600
+    end
+    
+    alt URL not found or inactive
+        API-->>Client: 404 Not Found
+    else URL found
+        API-->>Client: 302 Redirect<br/>Location: destination_url
+    end
+    
+    Note over API,GeoIP: Analytics Recording (Async - Non-blocking)
+    
+    par Async Analytics Processing
+        API->>API: Extract metadata<br/>(User-Agent, Referer, IP)
+        API->>GeoIP: Lookup IP location
+        GeoIP-->>API: {country, city, lat, lon}
+        API->>API: Parse device/browser/OS<br/>Hash IP for privacy
+        API->>Redis: RPUSH analytics:buffer<br/>{enriched click event JSON}
+    end

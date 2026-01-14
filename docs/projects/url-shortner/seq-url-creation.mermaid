@@ -1,0 +1,35 @@
+---
+title: URL Creation Flow
+---
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as SvelteKit Frontend
+    participant API as Go API Server
+    participant Redis
+    participant DB as PostgreSQL
+
+    User->>Web: Enter long URL + notes
+    Web->>Web: Client-side validation
+    Web->>API: POST /api/urls<br/>{destination_url, notes, metadata}
+    
+    API->>API: Validate JWT token
+    API->>API: Validate URL format
+    API->>API: Generate short code (Base62)
+    
+    API->>DB: Check short_code uniqueness
+    DB-->>API: OK (not exists)
+    
+    alt Short code collision
+        API->>API: Regenerate short code
+        API->>DB: Check again
+    end
+    
+    API->>DB: INSERT INTO urls<br/>(user_id, short_code, destination_url, notes)
+    DB-->>API: Return created URL record
+    
+    API->>Redis: SET url:{short_code} → destination_url<br/>EX 3600 (1 hour TTL)
+    Redis-->>API: OK
+    
+    API-->>Web: 201 Created<br/>{id, short_code, short_url, qr_url}
+    Web-->>User: Display short URL + QR code

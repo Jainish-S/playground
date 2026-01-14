@@ -1,0 +1,41 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'javascript'
+type: 'application'
+
+tasks:
+  dev:
+    command: 'pnpm'
+    args: ['run', 'dev']
+    local: true
+
+  build:
+    command: 'pnpm'
+    args: ['run', 'build']
+    inputs:
+      - 'app/**/*'
+      - 'components/**/*'
+      - 'lib/**/*'
+      - 'hooks/**/*'
+      - 'types/**/*'
+      - 'public/**/*'
+      - 'package.json'
+      - 'next.config.js'
+      - 'tsconfig.json'
+      - 'tailwind.config.ts'
+    outputs:
+      - '.next/'
+
+  start:
+    command: 'pnpm'
+    args: ['run', 'start']
+    local: true
+    deps:
+      - 'build'
+
+  lint:
+    command: 'pnpm'
+    args: ['run', 'lint']
+
+  install:
+    command: 'pnpm'
+    args: ['install']

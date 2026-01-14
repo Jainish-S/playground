@@ -1,0 +1,68 @@
+---
+title: Analytics Data Flow Pipeline
+---
+flowchart LR
+    subgraph Input["Data Capture"]
+        Click["🖱️ Click Event"]
+        Meta["📋 Request Metadata<br/>• IP Address<br/>• User Agent<br/>• Referer<br/>• Timestamp"]
+    end
+
+    subgraph Enrichment["Data Enrichment"]
+        Parse["🔍 Parse User Agent<br/>• Device Type<br/>• Browser<br/>• OS"]
+        Geo["🌍 GeoIP Lookup<br/>• Country<br/>• City<br/>• Coordinates"]
+        Hash["🔒 Privacy Processing<br/>• Hash IP<br/>• Remove PII"]
+    end
+
+    subgraph Buffer["Buffer Layer"]
+        RedisBuf["🔴 Redis List<br/>analytics:buffer<br/>~5000 events"]
+    end
+
+    subgraph Flush["Flush Worker"]
+        Worker["⚙️ Flusher<br/>Every 5 seconds<br/>Batch: 1000"]
+    end
+
+    subgraph Storage["Primary Storage"]
+        Clicks["📊 clicks<br/>(Hypertable)<br/>Raw Events"]
+    end
+
+    subgraph TimescaleFeatures["TimescaleDB Features"]
+        Compress["🗜️ Compression<br/>After 7 days<br/>~90% reduction"]
+        Retain["🗑️ Retention<br/>Drop after 90 days"]
+    end
+
+    subgraph Aggregation["Continuous Aggregates"]
+        Hourly["⏰ hourly_stats<br/>Refresh: 30min"]
+        Daily["📅 daily_stats<br/>Refresh: 1hr"]
+    end
+
+    subgraph Query["Query Layer"]
+        Dashboard["📈 Dashboard<br/>Queries"]
+        Export["📤 Export<br/>Reports"]
+        API["🔌 Analytics<br/>API"]
+    end
+
+    %% Flow
+    Click --> Meta
+    Meta --> Parse
+    Meta --> Geo
+    Parse --> Hash
+    Geo --> Hash
+    Hash --> RedisBuf
+    RedisBuf --> Worker
+    Worker --> Clicks
+    Clicks --> Compress
+    Compress --> Retain
+    Clicks --> Hourly
+    Clicks --> Daily
+    Hourly --> Dashboard
+    Daily --> Dashboard
+    Hourly --> API
+    Daily --> API
+    Clicks --> Export
+
+    %% Styling
+    style Click fill:#e3f2fd
+    style RedisBuf fill:#ffebee
+    style Clicks fill:#fff3e0
+    style Hourly fill:#e8f5e9
+    style Daily fill:#e8f5e9

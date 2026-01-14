@@ -1,0 +1,62 @@
+---
+title: Analytics Processing Flow
+---
+sequenceDiagram
+    autonumber
+    participant API as Go API Servers
+    participant Redis
+    participant Worker as Analytics Flusher Worker
+    participant DB as PostgreSQL + TimescaleDB
+    participant Agg as Continuous Aggregate
+
+    Note over API,Redis: Multiple API servers push click events
+    
+    loop Every redirect request
+        API->>Redis: RPUSH analytics:buffer {click_event}
+    end
+    
+    Note over Worker,DB: Worker runs every 5 seconds
+    
+    loop Every 5 seconds
+        Worker->>Redis: LLEN analytics:buffer
+        Redis-->>Worker: count (e.g., 500)
+        
+        alt Buffer has events
+            Worker->>Redis: LPOP analytics:buffer COUNT 1000
+            Redis-->>Worker: [click_event_1, click_event_2, ...]
+            
+            Worker->>Worker: Parse JSON events
+            Worker->>Worker: Resolve url_id from short_code
+            
+            Worker->>DB: BEGIN TRANSACTION
+            Worker->>DB: COPY INTO clicks (batch insert)<br/>~1000 rows
+            DB-->>Worker: Inserted
+            Worker->>DB: COMMIT
+            
+            Note over DB: TimescaleDB auto-partitions by time
+        end
+    end
+    
+    Note over DB,Agg: Continuous Aggregates (Async by TimescaleDB)
+    
+    loop Every 30 minutes (configured policy)
+        DB->>Agg: Refresh hourly_stats materialized view
+        Agg->>Agg: Aggregate new data into hourly buckets
+        
+        DB->>Agg: Refresh daily_stats materialized view
+        Agg->>Agg: Aggregate into daily buckets
+    end
+    
+    Note over DB: Compression Policy (Async)
+    
+    loop Daily (configured policy)
+        DB->>DB: Compress chunks older than 7 days
+        DB->>DB: ~90% storage reduction
+    end
+    
+    Note over DB: Retention Policy (Async)
+    
+    loop Daily (configured policy)
+        DB->>DB: Drop raw click data older than 90 days
+        DB->>DB: Keep aggregated data indefinitely
+    end

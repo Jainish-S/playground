@@ -1,0 +1,87 @@
+---
+title: URL Shortener - Entity Relationship Diagram
+---
+erDiagram
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        string name
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    URLS {
+        uuid id PK
+        uuid user_id FK
+        string short_code UK
+        text destination_url
+        text notes
+        jsonb metadata
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    URL_HISTORY {
+        uuid id PK
+        uuid url_id FK
+        text previous_url
+        text new_url
+        timestamp changed_at
+        uuid changed_by FK
+    }
+    
+    CLICKS {
+        timestamp time PK
+        uuid url_id FK
+        string ip_hash
+        text user_agent
+        text referrer
+        string country
+        string city
+        float latitude
+        float longitude
+        string device_type
+        string browser
+        string os
+    }
+    
+    HOURLY_STATS {
+        timestamp bucket PK
+        uuid url_id PK
+        bigint click_count
+        bigint unique_visitors
+        bigint mobile_clicks
+        bigint desktop_clicks
+        bigint tablet_clicks
+    }
+    
+    DAILY_STATS {
+        timestamp bucket PK
+        uuid url_id PK
+        bigint click_count
+        bigint unique_visitors
+        jsonb country_breakdown
+        jsonb referrer_breakdown
+        jsonb device_breakdown
+    }
+    
+    API_KEYS {
+        uuid id PK
+        uuid user_id FK
+        string key_hash UK
+        string name
+        jsonb permissions
+        timestamp last_used_at
+        timestamp expires_at
+        timestamp created_at
+    }
+
+    USERS ||--o{ URLS : "creates"
+    USERS ||--o{ API_KEYS : "owns"
+    USERS ||--o{ URL_HISTORY : "changes"
+    URLS ||--o{ URL_HISTORY : "has history"
+    URLS ||--o{ CLICKS : "receives"
+    URLS ||--o{ HOURLY_STATS : "aggregates to"
+    URLS ||--o{ DAILY_STATS : "aggregates to"

@@ -1,0 +1,171 @@
+---
+title: Go Application - Domain Model & Interfaces
+---
+classDiagram
+    direction TB
+    
+    class User {
+        +UUID ID
+        +string Email
+        +string PasswordHash
+        +string Name
+        +time.Time CreatedAt
+        +time.Time UpdatedAt
+    }
+    
+    class URL {
+        +UUID ID
+        +UUID UserID
+        +string ShortCode
+        +string DestinationURL
+        +string Notes
+        +map~string,any~ Metadata
+        +bool IsActive
+        +time.Time CreatedAt
+        +time.Time UpdatedAt
+    }
+    
+    class URLHistory {
+        +UUID ID
+        +UUID URLID
+        +string PreviousURL
+        +string NewURL
+        +UUID ChangedBy
+        +time.Time ChangedAt
+    }
+    
+    class Click {
+        +time.Time Time
+        +UUID URLID
+        +string IPHash
+        +string UserAgent
+        +string Referrer
+        +string Country
+        +string City
+        +float64 Latitude
+        +float64 Longitude
+        +string DeviceType
+        +string Browser
+        +string OS
+    }
+    
+    class ClickEvent {
+        +string URLCode
+        +string IP
+        +string UserAgent
+        +string Referrer
+        +time.Time Timestamp
+    }
+    
+    class EnrichedClick {
+        +ClickEvent
+        +string IPHash
+        +string Country
+        +string City
+        +string DeviceType
+        +string Browser
+        +string OS
+    }
+    
+    class GeoLocation {
+        +string Country
+        +string CountryCode
+        +string City
+        +float64 Latitude
+        +float64 Longitude
+    }
+    
+    class URLRepository {
+        <<interface>>
+        +Create(ctx, url) URL
+        +GetByID(ctx, id) URL
+        +GetByCode(ctx, code) URL
+        +GetByUserID(ctx, userID) []URL
+        +Update(ctx, url) URL
+        +Delete(ctx, id) error
+        +SaveHistory(ctx, history) error
+    }
+    
+    class AnalyticsRepository {
+        <<interface>>
+        +InsertClicks(ctx, clicks) error
+        +GetHourlyStats(ctx, urlID, from, to) []HourlyStat
+        +GetDailyStats(ctx, urlID, from, to) []DailyStat
+        +GetGeoBreakdown(ctx, urlID, from, to) []GeoStat
+        +GetDeviceBreakdown(ctx, urlID, from, to) []DeviceStat
+    }
+    
+    class CacheRepository {
+        <<interface>>
+        +GetURL(ctx, code) string
+        +SetURL(ctx, code, url) error
+        +DeleteURL(ctx, code) error
+        +GetQR(ctx, code, size) []byte
+        +SetQR(ctx, code, size, data) error
+        +PushAnalytics(ctx, event) error
+        +PopAnalytics(ctx, count) []EnrichedClick
+    }
+    
+    class UserRepository {
+        <<interface>>
+        +Create(ctx, user) User
+        +GetByID(ctx, id) User
+        +GetByEmail(ctx, email) User
+        +Update(ctx, user) User
+    }
+    
+    class ShortenerService {
+        -URLRepository urlRepo
+        -CacheRepository cache
+        -codeLength int
+        +CreateURL(ctx, userID, destURL, notes) URL
+        +UpdateDestination(ctx, urlID, newURL) URL
+        +GenerateCode() string
+    }
+    
+    class AnalyticsService {
+        -CacheRepository cache
+        -GeoIPService geoIP
+        +RecordClick(ctx, event) error
+        +GetURLAnalytics(ctx, urlID, range) Analytics
+    }
+    
+    class GeoIPService {
+        -geoip2.Reader reader
+        +Lookup(ip string) GeoLocation
+        +Close() error
+    }
+    
+    class QRService {
+        -CacheRepository cache
+        -baseURL string
+        +GenerateQR(ctx, code, size) []byte
+    }
+    
+    class AuthService {
+        -UserRepository userRepo
+        -CacheRepository cache
+        -jwtSecret string
+        +Register(ctx, email, password, name) Tokens
+        +Login(ctx, email, password) Tokens
+        +RefreshToken(ctx, refreshToken) string
+        +Logout(ctx, refreshToken) error
+    }
+    
+    %% Relationships
+    User "1" --> "*" URL : owns
+    URL "1" --> "*" URLHistory : has
+    URL "1" --> "*" Click : receives
+    
+    ClickEvent <|-- EnrichedClick : extends
+    
+    ShortenerService --> URLRepository : uses
+    ShortenerService --> CacheRepository : uses
+    
+    AnalyticsService --> CacheRepository : uses
+    AnalyticsService --> GeoIPService : uses
+    
+    QRService --> CacheRepository : uses
+    
+    AuthService --> UserRepository : uses
+    AuthService --> CacheRepository : uses

@@ -1,0 +1,47 @@
+---
+title: QR Code Generation Flow
+---
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as SvelteKit Frontend
+    participant API as Go API Server
+    participant Redis
+    participant QR as QR Generator<br/>(go-qrcode)
+    participant DB as PostgreSQL
+
+    User->>Web: Request QR code for URL
+    Web->>API: GET /api/urls/{id}/qr?size=256
+    
+    API->>API: Validate JWT token
+    API->>API: Parse size parameter<br/>(default: 256, max: 1024)
+    
+    API->>Redis: GET qr:{short_code}:{size}
+    
+    alt Cache Hit
+        Redis-->>API: Base64 PNG data
+        API-->>Web: 200 OK<br/>Content-Type: image/png
+        Web-->>User: Display QR code
+    else Cache Miss
+        Redis-->>API: nil
+        
+        API->>DB: SELECT short_code FROM urls<br/>WHERE id = {id} AND user_id = {user_id}
+        DB-->>API: short_code
+        
+        alt URL not found
+            API-->>Web: 404 Not Found
+        else URL found
+            API->>API: Build full short URL<br/>https://short.ly/{short_code}
+            
+            API->>QR: Generate QR code<br/>(url, size, error_correction)
+            QR-->>API: PNG bytes
+            
+            API->>Redis: SET qr:{short_code}:{size}<br/>→ base64(PNG)<br/>EX 86400 (24h TTL)
+            Redis-->>API: OK
+            
+            API-->>Web: 200 OK<br/>Content-Type: image/png
+            Web-->>User: Display QR code
+        end
+    end
+    
+    Note over User,QR: QR code always points to short URL<br/>so it remains valid even when<br/>destination changes

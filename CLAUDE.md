@@ -247,3 +247,35 @@ git tag v1.0.0
 # CI: Tag existing image → myapp:v1.0.0 (no rebuild!)
 # Update infra/prod/values.yaml image.tag = v1.0.0
 ```
+
+## Frontend (Next.js + shadcn/ui)
+
+### shadcn/ui Installation (IMPORTANT)
+**shadcn/ui is NOT an npm package. It's a CLI that generates component files.**
+
+```bash
+# Initialize shadcn in a Next.js project
+cd apps/<app-name>
+pnpm dlx shadcn@latest init
+
+# Add individual components
+pnpm dlx shadcn@latest add button
+pnpm dlx shadcn@latest add card
+pnpm dlx shadcn@latest add input
+```
+
+### What shadcn init does:
+1. Creates `components.json` config file
+2. Sets up `lib/utils.ts` with `cn()` helper
+3. Configures Tailwind CSS with shadcn theme
+4. Creates `components/ui/` directory for components
+
+### Key Rules:
+- **DO NOT manually install Radix UI packages** - shadcn CLI handles dependencies
+- Each component is generated into `components/ui/<component>.tsx`
+- Components are fully customizable - you own the code
+- Use `pnpm` for package management (not npm/yarn)
+
+### Docs Reference
+- Installation: https://ui.shadcn.com/docs/installation/next
+- Components: https://ui.shadcn.com/docs/components/button

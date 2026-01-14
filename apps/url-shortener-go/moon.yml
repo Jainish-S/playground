@@ -1,0 +1,63 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: 'go'
+type: 'application'
+
+tasks:
+  dev:
+    command: 'go'
+    args: ['run', './cmd/server']
+    local: true
+
+  worker:
+    command: 'go'
+    args: ['run', './cmd/worker']
+    local: true
+
+  build:
+    command: 'go'
+    args: ['build', '-o', 'bin/server', './cmd/server']
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+    outputs:
+      - 'bin/'
+
+  build-worker:
+    command: 'go'
+    args: ['build', '-o', 'bin/worker', './cmd/worker']
+    inputs:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+    outputs:
+      - 'bin/'
+
+  test:
+    command: 'go'
+    args: ['test', '-v', '-cover', './...']
+    inputs:
+      - '**/*.go'
+
+  lint:
+    command: 'golangci-lint'
+    args: ['run', './...']
+
+  format:
+    command: 'gofmt'
+    args: ['-w', '.']
+
+  docker:
+    command: 'docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile'
+      - '-t'
+      - 'url-shortener-go:latest'
+      - '../../'
+    inputs:
+      - '**/*.go'
+      - 'Dockerfile'
+      - '../../packages/go-common/**/*.go'

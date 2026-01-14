@@ -1,4 +1,4 @@
-go 1.23
+go 1.24.0
 
 use (
 	./apps/guardrail-server-go
@@ -6,6 +6,7 @@ use (
 	./apps/model-hate-detect-go
 	./apps/model-pii-detect-go
 	./apps/model-prompt-guard-go
+	./apps/url-shortener-go
 	./packages/go-common
 	./tools/loadtest
 )

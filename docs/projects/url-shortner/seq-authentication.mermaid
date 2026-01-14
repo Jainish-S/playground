@@ -1,0 +1,78 @@
+---
+title: Authentication Flow
+---
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as SvelteKit Frontend
+    participant API as Go API Server
+    participant Redis
+    participant DB as PostgreSQL
+
+    Note over User,DB: User Registration
+    
+    User->>Web: Fill registration form
+    Web->>API: POST /api/auth/register<br/>{email, password, name}
+    API->>API: Validate input
+    API->>DB: Check email uniqueness
+    DB-->>API: Not exists
+    API->>API: Hash password (bcrypt)
+    API->>DB: INSERT INTO users
+    DB-->>API: User created
+    API->>API: Generate JWT tokens
+    API->>Redis: SET refresh:{user_id}:{token_id}<br/>EX 604800 (7 days)
+    API-->>Web: 201 Created<br/>{access_token, refresh_token}
+    Web->>Web: Store tokens
+    Web-->>User: Registration successful
+
+    Note over User,DB: User Login
+    
+    User->>Web: Enter credentials
+    Web->>API: POST /api/auth/login<br/>{email, password}
+    API->>DB: SELECT * FROM users WHERE email = ?
+    DB-->>API: User record
+    API->>API: Verify password hash
+    
+    alt Invalid credentials
+        API-->>Web: 401 Unauthorized
+        Web-->>User: Invalid email or password
+    else Valid credentials
+        API->>API: Generate JWT tokens<br/>Access: 15min, Refresh: 7 days
+        API->>Redis: SET refresh:{user_id}:{token_id}<br/>EX 604800
+        API-->>Web: 200 OK<br/>{access_token, refresh_token}
+        Web->>Web: Store in httpOnly cookies
+        Web-->>User: Login successful
+    end
+
+    Note over User,DB: Authenticated Request
+    
+    User->>Web: Access protected page
+    Web->>API: GET /api/urls<br/>Authorization: Bearer {access_token}
+    API->>API: Validate JWT signature
+    API->>API: Check token expiry
+    
+    alt Token valid
+        API->>DB: Query user's URLs
+        DB-->>API: URLs list
+        API-->>Web: 200 OK {urls}
+        Web-->>User: Display URLs
+    else Token expired
+        API-->>Web: 401 Token expired
+        Web->>API: POST /api/auth/refresh<br/>{refresh_token}
+        API->>API: Validate refresh token
+        API->>Redis: EXISTS refresh:{user_id}:{token_id}
+        Redis-->>API: true
+        API->>API: Generate new access token
+        API-->>Web: 200 OK {access_token}
+        Web->>Web: Retry original request
+    end
+
+    Note over User,DB: Logout
+    
+    User->>Web: Click logout
+    Web->>API: POST /api/auth/logout<br/>{refresh_token}
+    API->>Redis: DEL refresh:{user_id}:{token_id}
+    Redis-->>API: OK
+    API-->>Web: 200 OK
+    Web->>Web: Clear tokens
+    Web-->>User: Logged out

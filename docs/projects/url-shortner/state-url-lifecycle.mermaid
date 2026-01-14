@@ -1,0 +1,58 @@
+---
+title: URL Lifecycle State Diagram
+---
+stateDiagram-v2
+    [*] --> Created: User creates short URL
+    
+    Created --> Active: Auto-transition
+    
+    Active --> Active: Destination updated<br/>(short code unchanged)
+    Active --> Active: Notes updated
+    Active --> Active: Metadata updated
+    
+    Active --> Paused: User pauses URL
+    Paused --> Active: User resumes URL
+    
+    Active --> Disabled: User disables URL
+    Paused --> Disabled: User disables URL
+    Disabled --> Active: User re-enables URL
+    
+    Active --> Expired: TTL reached<br/>(if configured)
+    Paused --> Expired: TTL reached
+    Expired --> Active: User extends TTL
+    
+    Active --> Deleted: User deletes URL
+    Paused --> Deleted: User deletes URL
+    Disabled --> Deleted: User deletes URL
+    Expired --> Deleted: Cleanup job runs
+    
+    Deleted --> [*]: Soft delete<br/>(data retained for analytics)
+    
+    note right of Active
+        • Redirects work normally
+        • Analytics recorded
+        • Cache populated
+    end note
+    
+    note right of Paused
+        • Redirects show "paused" page
+        • Analytics still recorded
+        • Useful for temporary halt
+    end note
+    
+    note right of Disabled
+        • Redirects return 404
+        • No analytics recorded
+        • URL reserved
+    end note
+    
+    note right of Expired
+        • Redirects show "expired" page
+        • Can be renewed
+    end note
+    
+    note right of Deleted
+        • Soft delete in DB
+        • Short code can be reused
+        • Historical analytics retained
+    end note

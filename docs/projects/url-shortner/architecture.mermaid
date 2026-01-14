@@ -1,0 +1,114 @@
+---
+title: URL Shortener - System Architecture
+---
+flowchart TB
+    subgraph Clients["Client Layer"]
+        Browser["🌐 Web Browser"]
+        Mobile["📱 Mobile App"]
+        APIClient["🔌 API Clients"]
+    end
+
+    subgraph CDN["CDN / Edge Layer"]
+        CF["☁️ Cloudflare / Nginx"]
+    end
+
+    subgraph Frontend["Frontend Layer"]
+        SvelteKit["⚡ SvelteKit App<br/>(SSR + SPA)"]
+        subgraph UIComponents["UI Components"]
+            Dashboard["📊 Dashboard"]
+            URLManager["🔗 URL Manager"]
+            Analytics["📈 Analytics Charts"]
+        end
+    end
+
+    subgraph LoadBalancer["Load Balancer"]
+        LB["⚖️ Nginx / Traefik<br/>Rate Limiting<br/>SSL Termination"]
+    end
+
+    subgraph APILayer["API Layer (Go + fasthttp)"]
+        API1["🚀 API Server 1"]
+        API2["🚀 API Server 2"]
+        API3["🚀 API Server N"]
+        
+        subgraph Handlers["Request Handlers"]
+            RedirectH["↗️ Redirect Handler"]
+            URLH["🔗 URL CRUD Handler"]
+            AnalyticsH["📊 Analytics Handler"]
+            QRH["📱 QR Code Handler"]
+            AuthH["🔐 Auth Handler"]
+        end
+        
+        subgraph Services["Business Services"]
+            ShortenerSvc["🔢 Shortener Service"]
+            AnalyticsSvc["📈 Analytics Service"]
+            GeoIPSvc["🌍 GeoIP Service"]
+            QRSvc["📱 QR Service"]
+        end
+    end
+
+    subgraph Workers["Background Workers (Go)"]
+        Flusher["💾 Analytics Flusher<br/>(Redis → Postgres)"]
+        AggRefresh["📊 Aggregate Refresher"]
+        GeoEnrich["🌍 Geo Enrichment"]
+    end
+
+    subgraph Cache["Cache Layer"]
+        Redis["🔴 Redis<br/>• URL Cache<br/>• Rate Limits<br/>• Analytics Buffer<br/>• QR Cache"]
+    end
+
+    subgraph Database["Database Layer"]
+        subgraph PG["🐘 PostgreSQL + TimescaleDB"]
+            Tables["📋 Regular Tables<br/>• users<br/>• urls<br/>• url_history<br/>• api_keys"]
+            Hypertable["⏱️ Hypertable<br/>• clicks"]
+            Aggregates["📊 Continuous Aggregates<br/>• hourly_stats<br/>• daily_stats"]
+        end
+    end
+
+    subgraph External["External Services"]
+        MaxMind["🌍 MaxMind GeoLite2<br/>(Local DB File)"]
+    end
+
+    %% Connections
+    Browser --> CF
+    Mobile --> CF
+    APIClient --> CF
+    
+    CF --> SvelteKit
+    CF --> LB
+    
+    SvelteKit --> LB
+    
+    LB --> API1
+    LB --> API2
+    LB --> API3
+    
+    API1 --> Redis
+    API2 --> Redis
+    API3 --> Redis
+    
+    API1 --> PG
+    API2 --> PG
+    API3 --> PG
+    
+    GeoIPSvc --> MaxMind
+    
+    Flusher --> Redis
+    Flusher --> PG
+    
+    Workers -.-> Redis
+    Workers -.-> PG
+
+    %% Styling
+    classDef clientStyle fill:#e1f5fe,stroke:#01579b
+    classDef frontendStyle fill:#f3e5f5,stroke:#4a148c
+    classDef apiStyle fill:#e8f5e9,stroke:#1b5e20
+    classDef cacheStyle fill:#ffebee,stroke:#b71c1c
+    classDef dbStyle fill:#fff3e0,stroke:#e65100
+    classDef workerStyle fill:#fce4ec,stroke:#880e4f
+    
+    class Browser,Mobile,APIClient clientStyle
+    class SvelteKit,Dashboard,URLManager,Analytics frontendStyle
+    class API1,API2,API3,RedirectH,URLH,AnalyticsH,QRH,AuthH apiStyle
+    class Redis cacheStyle
+    class PG,Tables,Hypertable,Aggregates dbStyle
+    class Flusher,AggRefresh,GeoEnrich workerStyle

@@ -1,0 +1,99 @@
+---
+title: Deployment Architecture
+---
+flowchart TB
+    subgraph Internet["Internet"]
+        Users["👥 Users"]
+    end
+
+    subgraph Edge["Edge Layer"]
+        DNS["🌐 DNS<br/>(Cloudflare)"]
+        CDN["☁️ CDN<br/>(Static Assets)"]
+    end
+
+    subgraph LB["Load Balancer Layer"]
+        Nginx["⚖️ Nginx / Traefik<br/>• SSL Termination<br/>• Rate Limiting<br/>• Request Routing"]
+    end
+
+    subgraph Compute["Compute Layer (Docker Swarm / K8s)"]
+        subgraph Frontend["Frontend Pods"]
+            FE1["🖥️ SvelteKit<br/>Node.js"]
+            FE2["🖥️ SvelteKit<br/>Node.js"]
+        end
+        
+        subgraph API["API Pods (Horizontal Scaling)"]
+            API1["🚀 Go API<br/>fasthttp"]
+            API2["🚀 Go API<br/>fasthttp"]
+            API3["🚀 Go API<br/>fasthttp"]
+        end
+        
+        subgraph Workers["Worker Pods"]
+            W1["⚙️ Analytics<br/>Flusher"]
+            W2["⚙️ Aggregate<br/>Refresher"]
+        end
+    end
+
+    subgraph Data["Data Layer"]
+        subgraph RedisCluster["Redis (Primary + Replica)"]
+            RedisP["🔴 Redis Primary"]
+            RedisR["🔴 Redis Replica"]
+        end
+        
+        subgraph PGCluster["PostgreSQL + TimescaleDB"]
+            PGP["🐘 Primary<br/>(Read/Write)"]
+            PGR["🐘 Replica<br/>(Read Only)"]
+        end
+    end
+
+    subgraph Storage["Storage Layer"]
+        GeoIP["📁 GeoIP Database<br/>(Shared Volume)"]
+        Backups["💾 Backups<br/>(S3 / GCS)"]
+    end
+
+    subgraph Monitoring["Observability"]
+        Prometheus["📊 Prometheus"]
+        Grafana["📈 Grafana"]
+        Logs["📝 Loki / ELK"]
+    end
+
+    %% Connections
+    Users --> DNS
+    DNS --> CDN
+    DNS --> Nginx
+    CDN --> Nginx
+    
+    Nginx --> FE1
+    Nginx --> FE2
+    Nginx --> API1
+    Nginx --> API2
+    Nginx --> API3
+    
+    FE1 & FE2 --> API1 & API2 & API3
+    
+    API1 & API2 & API3 --> RedisP
+    RedisP --> RedisR
+    
+    API1 & API2 & API3 --> PGP
+    API1 & API2 & API3 -.-> PGR
+    PGP --> PGR
+    
+    W1 --> RedisP
+    W1 --> PGP
+    W2 --> PGP
+    
+    API1 & API2 & API3 --> GeoIP
+    PGP --> Backups
+    
+    API1 & API2 & API3 --> Prometheus
+    W1 & W2 --> Prometheus
+    Prometheus --> Grafana
+    API1 & API2 & API3 --> Logs
+
+    %% Styling
+    style DNS fill:#e3f2fd
+    style Nginx fill:#fff9c4
+    style API1 fill:#c8e6c9
+    style API2 fill:#c8e6c9
+    style API3 fill:#c8e6c9
+    style RedisP fill:#ffcdd2
+    style PGP fill:#ffe0b2
